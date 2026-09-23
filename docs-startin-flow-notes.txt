@@ -1,0 +1,43 @@
+Fonte: /home/ubuntu/upload/StartIn—FluxodeTelasUI_UX.pdf
+
+Observações das páginas 1-10:
+- Visual base do produto: fundo cinza muito claro, azul marinho profundo (#062f61 aprox.) como cor primária, amarelo vivo para acentos e botões. Tipografia sem serifa, títulos grandes e pesados.
+- Pág. 1: Login em layout dividido; painel esquerdo azul com foguete, logo StartIn e texto 'Conecte sua startup a oportunidades certas.'; painel direito com card branco, e-mail, senha, link esqueci senha, Entrar e Criar conta.
+- Pág. 2: Cadastro no mesmo layout dividido; CNPJ, e-mail, senha, confirmar senha, termos e link de retorno.
+- Pág. 3: Onboarding com sidebar fixa e barra de progresso de 6 etapas: Identidade, Solução, Mercado, Momento, Objetivos, Matching. Formulário inicial para identidade da startup.
+- Pág. 4: Dashboard com saudação, banner azul de ações pendentes, cards de resumo (oportunidades salvas, matches novos, prazos, acompanhamento), próximos prazos e atividade recente.
+- Pág. 5: Página Para você com campo de busca, filtros/ordenação, abas Todos/Editais/Eventos/POCs/Compras e cards de oportunidades com porcentagem de match.
+- Pág. 6: Detalhe de oportunidade com metadados (prazo, localização, modalidade, status), descrição, painel de aderência e blocos de explicação do match.
+- Pág. 7: Lista de matches com compatibilidade média, cards POC/Edital e status das conexões.
+- Pág. 8: Estado de detalhe do match com explicação em 3 cards.
+- Pág. 9: Detalhe completo de match com quatro razões (perfil, requisitos, objetivo, contexto), CTA ver oportunidade e salvar match.
+- Pág. 10: Assistente IA com painel azul, atalhos de perguntas e área de conversa com input inferior.
+
+Direção de implementação: substituir a home genérica por um app frontend completo com rotas/estados locais para login, cadastro, onboarding, dashboard, oportunidades, detalhe de oportunidade, matches, detalhe de match e assistente IA. Sem necessidade de backend nesta fase; persistir estado apenas em React/localStorage quando útil.
+Observações adicionais das páginas 11-20:
+- Pág. 11: Minha startup com card de perfil, preferências de matching, chips de áreas/tipos e toggle de recomendações.
+- Pág. 12: Explorar com campo de busca, filtros, tabs e grid de quatro cards: Edital, POC, Evento, Compra.
+- Pág. 13: Minhas oportunidades com resumo de publicadas/em análise/encerradas e card de oportunidade publicada.
+- Pág. 14: Formulário Cadastrar empresa com tabs Empresa/Organização/Instituição, nome, descrição e tags.
+- Pág. 15: Formulário Cadastrar oportunidade com tabs POC/Compra/POC + Compra, título, descrição e perfil desejado.
+- Pág. 16: Configurações com cards Conta e acesso, Preferências de matching, Privacidade e segurança, Notificações, além de toggles rápidos.
+- Pág. 17: Notificações com tabs Todas/Oportunidades/Matches/Sistema e lista de notificações.
+- Pág. 18: Conta e acesso com dados editáveis e segurança.
+- Pág. 19: Privacidade e segurança com toggles de visibilidade/dados e sessões ativas.
+- Pág. 20: Preferências de matching com tipo de oportunidade e critérios de interesse.
+
+Direção visual confirmada: sidebar branca com logo STARTIN em azul, navegação escura, conteúdo em fundo #f7f8fa, cards brancos com bordas muito sutis, azul navy dominante e botões sólidos. O fluxo precisa permitir navegação entre todas as áreas sem depender de autenticação/backend.
+Atualização de design — PDF recebido em 2026-09-21:
+
+As telas de autenticação agora usam uma composição dividida em duas áreas. À esquerda há fundo azul navy, foguete amarelo desenhado em uma órbita circular, marca StartIn com letras espaçadas e mensagem contextual. À direita há fundo cinza muito claro e um card branco central com borda arredondada, inputs largos e botão azul compacto. O login, cadastro, recuperação, redefinição, sucesso, confirmação de e-mail e link expirado seguem esse mesmo sistema visual.
+
+O logo de autenticação não é apenas texto; ele é composto por foguete em órbita e o wordmark StartIn com destaque amarelo em “In”. A ilustração deve ser tratada como asset visual consistente entre as telas públicas.
+
+A área autenticada mantém sidebar branca fixa à esquerda, com logo STARTIN textual, descrição curta, navegação por Dashboard, Para você, Explorar, Matches, Minhas oportunidades e Assistente IA. A área de conteúdo usa fundo #f5f6f8, títulos grandes em azul navy, campos brancos com borda fina e botão primário azul. O onboarding tem seis etapas visíveis no topo, com barras de progresso amarelas para as etapas concluídas.
+
+As páginas do onboarding são mais específicas que o protótipo atual: Identidade inclui logo, nome, área, descrição, localização, CNPJ, site e ano de fundação; Solução inclui problema, funcionamento, diferencial, tecnologia, impacto, categoria e modelo de negócio; Mercado inclui público-alvo, setor, região, estado, perfil de cliente, concorrentes, tamanho do mercado e canal principal. Cada etapa tem botão Continuar alinhado no canto inferior direito.
+
+Fonte: /home/ubuntu/upload/StartIn—FluxodeTelasUI_UX.pdf, páginas 1-10.
+As páginas 11-35 reforçam o uso de cards amplos em branco sobre fundo cinza muito claro, com bastante espaço vertical. O dashboard lateral usa ícones simples, item ativo em azul claro e texto azul navy. As telas de estado vazio têm card central, ícone em círculo pastel, título forte e CTA primário. Estados de erro usam ícone de exclamação vermelho, explicação do problema, ação de tentar novamente e bloco secundário “Enquanto isso”. O registro de interesse aparece em modal central sobre o conteúdo. A confirmação de oportunidade publicada exibe card de sucesso e próximos passos. Configurações possui quatro cards em grade e toggles azuis; conta inclui seção de segurança e exclusão da conta com botão vermelho.
+
+Fonte: /home/ubuntu/upload/StartIn—FluxodeTelasUI_UX.pdf, páginas 11-35.

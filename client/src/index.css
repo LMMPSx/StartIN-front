@@ -1,0 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root { --background: #f7f9fb; --foreground: #112d4f; --card: #ffffff; --card-foreground: #112d4f; --popover: #ffffff; --popover-foreground: #112d4f; --primary: #075394; --primary-foreground: #ffffff; --secondary: #eaf2f8; --secondary-foreground: #075394; --muted: #f3f6f8; --muted-foreground: #778691; --accent: #ffd43b; --accent-foreground: #3f3200; --border: #e2e7eb; --input: #dfe5e9; --ring: #a9c7dd; --radius: .65rem; }
+* { box-sizing: border-box; }
+html { font-family: 'DM Sans', sans-serif; background: var(--background); }
+body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); }
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
+@media (prefers-reduced-motion: no-preference) { button, article { transition: transform 180ms cubic-bezier(.23,1,.32,1), background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease; } }
