@@ -1,0 +1,125 @@
+/* Botões Padrão Figma */
+.startin-btn {
+  display: inline-flex;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.startin-btn:active {
+  transform: scale(0.98);
+}
+
+.startin-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.startin-btn-primary {
+  background-color: var(--startin-blue);
+  color: #ffffff;
+  box-shadow: var(--shadow-primary-btn);
+}
+
+.startin-btn-primary:hover {
+  background-color: var(--startin-blue-hover);
+}
+
+.startin-btn-secondary {
+  border: 1px solid #cfd7e0;
+  background-color: #ffffff;
+  color: #063464;
+}
+
+.startin-btn-secondary:hover {
+  border-color: var(--startin-blue);
+}
+
+/* Campos de Formulário (Inputs e Textareas) */
+.startin-field-label {
+  margin-bottom: 0.5rem;
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #203754;
+}
+
+.startin-input {
+  height: 2.75rem;
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #dfe4e9;
+  background-color: #ffffff;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  font-size: 0.875rem;
+  color: #12355d;
+  outline: none;
+}
+
+.startin-input::placeholder,
+.startin-textarea::placeholder {
+  color: #9ba4ad;
+}
+
+.startin-input:focus,
+.startin-textarea:focus {
+  border-color: var(--startin-blue);
+  box-shadow: 0 0 0 3px rgba(7, 83, 148, 0.1);
+}
+
+.startin-textarea {
+  min-height: 92px;
+  width: 100%;
+  resize: none;
+  border-radius: 0.5rem;
+  border: 1px solid #dfe4e9;
+  background-color: #ffffff;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: #12355d;
+  outline: none;
+}
+
+/* Cards de Oportunidades */
+.startin-opp-card {
+  display: flex;
+  min-height: 210px;
+  flex-direction: column;
+  border-radius: 1rem;
+  border: 1px solid #e1e6ea;
+  background-color: #ffffff;
+  padding: 1.25rem;
+}
+
+.startin-opp-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Badges de Tipos de Oportunidades */
+.startin-badge-edital {
+  background-color: var(--badge-edital-bg);
+  color: var(--badge-edital-text);
+}
+
+.startin-badge-poc {
+  background-color: var(--badge-poc-bg);
+  color: var(--badge-poc-text);
+}
+
+.startin-badge-evento {
+  background-color: var(--badge-evento-bg);
+  color: var(--badge-evento-text);
+}
+
+.startin-badge-compra {
+  background-color: var(--badge-compra-bg);
+  color: var(--badge-compra-text);
+}

@@ -11,6 +11,7 @@ export interface UserSession {
   email: string;
   name: string;
   cnpj?: string;
+  avatarUrl?: string;
 }
 
 const SESSION_KEY = "startin-session";
@@ -70,6 +71,10 @@ export interface MatchItem {
   opportunityType: string;
   opportunityShort?: string;
   opportunityMeta?: string;
+  opportunityDescription?: string;
+  opportunityTags?: string;
+  opportunityColor?: string;
+  opportunityExternalUrl?: string;
   matchScore: number;
   justification: string;
   recommendedAction: string;
@@ -82,6 +87,7 @@ export interface StartupProfileData {
   userId?: number;
   userName?: string;
   userEmail?: string;
+  avatarUrl?: string;
   name: string;
   mainArea: string;
   description: string;
@@ -120,6 +126,8 @@ export interface StartupProfileData {
   areasOfInterest: string;
   opportunityTypes: string;
   receiveAiRecommendations: boolean;
+  emailNotifications?: boolean;
+  matchAlerts?: boolean;
 }
 
 export interface DashboardSummary {
@@ -165,22 +173,22 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const api = {
   // Autenticação e Conta
   login: (data: { email: string; password: string }) =>
-    request<{ success: boolean; token: string; userId: number; email: string; name: string; cnpj?: string; startupProfileId: number; message?: string }>(
+    request<{ success: boolean; token: string; userId: number; email: string; name: string; cnpj?: string; avatarUrl?: string; startupProfileId: number; message?: string }>(
       "/auth/login",
       { method: "POST", body: JSON.stringify(data) }
     ),
 
   signup: (data: { cnpj: string; email: string; password: string; confirm?: string; name?: string }) =>
-    request<{ success: boolean; token: string; userId: number; email: string; name: string; cnpj?: string; startupProfileId: number; message?: string }>(
+    request<{ success: boolean; token: string; userId: number; email: string; name: string; cnpj?: string; avatarUrl?: string; startupProfileId: number; message?: string }>(
       "/auth/signup",
       { method: "POST", body: JSON.stringify(data) }
     ),
 
   getUser: (userId: number) =>
-    request<{ success: boolean; userId: number; email: string; name: string; cnpj?: string; startupProfileId: number }>(`/auth/user/${userId}`),
+    request<{ success: boolean; userId: number; email: string; name: string; cnpj?: string; avatarUrl?: string; startupProfileId: number }>(`/auth/user/${userId}`),
 
-  updateUser: (userId: number, data: { name?: string; email?: string; cnpj?: string }) =>
-    request<{ success: boolean; userId: number; email: string; name: string; cnpj?: string; startupProfileId: number }>(
+  updateUser: (userId: number, data: { name?: string; email?: string; cnpj?: string; avatarUrl?: string }) =>
+    request<{ success: boolean; userId: number; email: string; name: string; cnpj?: string; avatarUrl?: string; startupProfileId: number }>(
       `/auth/user/${userId}`,
       { method: "PUT", body: JSON.stringify(data) }
     ),
@@ -197,7 +205,22 @@ export const api = {
   getProfileByUser: (userId: number) => request<StartupProfileData>(`/startups/user/${userId}`),
   updateProfile: (id: number, data: Partial<StartupProfileData>) =>
     request<StartupProfileData>(`/startups/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  updatePreferences: (id: number, data: { areasOfInterest?: string; opportunityTypes?: string; receiveAiRecommendations?: boolean }) =>
+  updatePreferences: (
+    id: number,
+    data: {
+      areasOfInterest?: string;
+      opportunityTypes?: string;
+      receiveAiRecommendations?: boolean;
+      emailNotifications?: boolean;
+      matchAlerts?: boolean;
+      mainSector?: string;
+      technologies?: string;
+      operationRegion?: string;
+      currentStage?: string;
+      investmentNeed?: string;
+      avatarUrl?: string;
+    }
+  ) =>
     request<StartupProfileData>(`/startups/${id}/preferences`, { method: "PUT", body: JSON.stringify(data) }),
 
   // Oportunidades e Empresas

@@ -1,0 +1,68 @@
+/* Layout de Autenticação (AuthShell) */
+.startin-auth-shell {
+  min-height: 100vh;
+  background-color: var(--background-auth);
+}
+
+@media (min-width: 1024px) {
+  .startin-auth-shell {
+    display: grid;
+    grid-template-columns: 43% 57%;
+  }
+}
+
+.startin-auth-hero {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--startin-navy);
+  padding: 2.5rem 3rem;
+  color: #ffffff;
+}
+
+.startin-auth-card {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 28px;
+  border: 1px solid #e4e8ec;
+  background-color: #ffffff;
+  box-shadow: var(--shadow-auth-card);
+}
+
+/* AppShell & Sidebar */
+.startin-app-shell {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.startin-sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  display: flex;
+  width: 248px;
+  flex-direction: column;
+  border-right: 1px solid #e5e9ed;
+  background-color: #ffffff;
+}
+
+.startin-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e8edf0;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+.startin-main-container {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1280px;
+}
