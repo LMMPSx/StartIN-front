@@ -1,15 +1,22 @@
-import { Rocket } from "./AppIcons";
+import React from "react";
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="flex items-start gap-2">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ffd43b] text-[#052e5f]">
-        <Rocket size={18} fill="currentColor" />
+    <div className="flex items-center gap-2">
+      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+        <img
+          src="/icons/rocket-icon.png"
+          alt="StartIn"
+          className="h-full w-full object-contain"
+        />
       </div>
       <div>
-        <div className="text-[19px] font-extrabold tracking-[-.06em] text-[#062f61]">STARTIN</div>
+        <div className="text-[20px] font-black tracking-[-.04em] text-[#111827] leading-none flex items-center">
+          <span>Start</span>
+          <span className="text-[#FEC908]">In</span>
+        </div>
         {!compact && (
-          <div className="mt-0.5 max-w-[135px] text-[10px] leading-3 text-[#68717d]">
+          <div className="mt-0.5 max-w-[140px] text-[9.5px] leading-3 text-[#64748b] font-medium">
             Oportunidades que combinam com sua startup.
           </div>
         )}
@@ -20,11 +27,25 @@ export function Logo({ compact = false }: { compact?: boolean }) {
 
 export function OrbitMark() {
   return (
-    <div className="relative flex h-24 w-24 items-center justify-center">
-      <div className="absolute inset-1 rounded-full border border-[#ffd43b]/70 rotate-[-24deg]" />
-      <div className="absolute inset-4 rounded-full border border-[#ffd43b]/40 rotate-[30deg]" />
-      <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ffd43b] text-[#062f61] rotate-[-18deg]">
-        <Rocket size={22} fill="currentColor" />
+    <div className="relative flex items-center justify-start max-w-[160px]">
+      <img
+        src="/icons/startin-logo-transparent.png"
+        alt="StartIn Marca Oficial"
+        className="w-full h-auto object-contain"
+      />
+    </div>
+  );
+}
+
+export function StartInBrandHero() {
+  return (
+    <div className="flex flex-col items-start gap-4">
+      <div className="max-w-[180px]">
+        <img
+          src="/icons/startin-logo-transparent.png"
+          alt="StartIn"
+          className="w-full h-auto object-contain"
+        />
       </div>
     </div>
   );

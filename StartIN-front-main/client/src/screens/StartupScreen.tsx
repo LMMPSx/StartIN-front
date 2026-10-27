@@ -117,6 +117,9 @@ export function Startup({
       }
       try {
         const targetId = profile?.id || startupId || session?.startupProfileId || 1;
+        if (session?.userId) {
+          await api.updateUser(session.userId, { avatarUrl: dataUrl }).catch(() => {});
+        }
         const updated = await api.updatePreferences(targetId, { avatarUrl: dataUrl });
         onProfileUpdated(updated);
         setFeedbackMsg("Foto de perfil atualizada com sucesso!");
@@ -186,10 +189,10 @@ export function Startup({
               <img
                 src={avatarUrl}
                 alt={displayName}
-                className="h-16 w-16 rounded-full border-2 border-[#075394] object-cover"
+                className="h-16 w-16 rounded-full border-2 border-[#111827] object-cover"
               />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#062f61] text-lg font-extrabold text-white">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#111827] text-lg font-extrabold text-white">
                 {getInitials(displayName)}
               </div>
             )}
@@ -197,7 +200,7 @@ export function Startup({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               title="Adicionar ou alterar foto de perfil"
-              className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#075394] text-white shadow transition hover:bg-[#062f61]"
+              className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#111827] text-[#FEC908] shadow transition hover:bg-black"
             >
               <Camera size={13} />
             </button>
@@ -210,14 +213,14 @@ export function Startup({
             />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-[#123b62]">{displayName}</h2>
+            <h2 className="text-xl font-extrabold text-[#111827]">{displayName}</h2>
             <p className="mt-1 text-sm text-[#76838d]">{displaySubtitle}</p>
           </div>
         </div>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="inline-flex items-center gap-2 self-start rounded-xl border border-[#d6e0e7] bg-[#f8fafc] px-4 py-2.5 text-xs font-bold text-[#075394] transition hover:bg-[#eaf2f8] sm:self-auto"
+          className="inline-flex items-center gap-2 self-start rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-bold text-[#111827] transition hover:bg-gray-100 sm:self-auto"
         >
           <Camera size={14} />
           {avatarUrl ? "Alterar foto de perfil" : "Adicionar foto de perfil"}
@@ -227,12 +230,12 @@ export function Startup({
       <section className="mt-7 rounded-2xl border border-[#e2e7eb] bg-white p-6">
         <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-lg font-extrabold text-[#123b62]">Preferências de matching</h2>
+            <h2 className="text-lg font-extrabold text-[#111827]">Preferências de matching</h2>
             <p className="mt-1 text-xs text-[#7d8a95]">
               Selecione as áreas e os tipos de oportunidade que deseja priorizar nas recomendações da IA.
             </p>
           </div>
-          <span className="text-[11px] font-semibold text-[#075394]">
+          <span className="text-[11px] font-semibold text-[#111827]">
             {selectedAreas.length} áreas · {selectedOppTypes.length} tipos ativos
           </span>
         </div>
@@ -252,8 +255,8 @@ export function Startup({
                     onClick={() => toggleArea(area)}
                     className={`rounded-full px-4 py-2 text-xs font-bold transition ${
                       isSelected
-                        ? "bg-[#075394] text-white shadow-sm"
-                        : "bg-[#eaf2f8] text-[#075394] opacity-75 hover:opacity-100"
+                        ? "bg-[#111827] text-white font-bold shadow-sm"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     {area}
@@ -268,12 +271,12 @@ export function Startup({
                 onChange={(e) => setCustomAreaInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomArea())}
                 placeholder="Adicionar nova área (ex: Biotecnologia)..."
-                className="h-9 flex-1 rounded-lg border border-[#d9e1e7] bg-[#f9fbfc] px-3 text-xs outline-none focus:border-[#075394]"
+                className="h-9 flex-1 rounded-lg border border-[#d9e1e7] bg-[#f9fbfc] px-3 text-xs outline-none focus:border-[#111827]"
               />
               <button
                 type="button"
                 onClick={handleAddCustomArea}
-                className="inline-flex h-9 items-center gap-1 rounded-lg bg-[#eaf2f8] px-3 text-xs font-bold text-[#075394] hover:bg-[#dce9f4]"
+                className="inline-flex h-9 items-center gap-1 rounded-lg bg-[#111827] px-3 text-xs font-bold text-white hover:bg-black transition"
               >
                 <Plus size={13} /> Adicionar
               </button>
@@ -294,7 +297,7 @@ export function Startup({
                     onClick={() => toggleOppType(x)}
                     className={`rounded-full px-4 py-2 text-xs font-bold transition ${
                       active
-                        ? "bg-[#075394] text-white shadow-sm"
+                        ? "bg-[#111827] text-white font-bold shadow-sm"
                         : "bg-[#f3f5f6] text-[#557086] hover:bg-[#e5ebef]"
                     }`}
                   >
@@ -304,7 +307,7 @@ export function Startup({
               })}
             </div>
             <p className="mt-3 text-[11px] leading-4 text-[#83919c]">
-              As abas <strong>Para você</strong> e <strong>Matches</strong> filtram automaticamente as oportunidades de acordo com os tipos e áreas selecionados acima.
+              A aba <strong>Para você</strong> filtra automaticamente as oportunidades de acordo com os tipos e áreas selecionados acima.
             </p>
           </div>
         </div>
@@ -320,7 +323,7 @@ export function Startup({
             type="button"
             onClick={() => setReceiveRecs(!receiveRecs)}
             className={`flex h-7 w-12 items-center rounded-full p-1 transition-colors ${
-              receiveRecs ? "bg-[#075394]" : "bg-[#b8c4cc]"
+              receiveRecs ? "bg-[#111827]" : "bg-[#b8c4cc]"
             }`}
           >
             <span

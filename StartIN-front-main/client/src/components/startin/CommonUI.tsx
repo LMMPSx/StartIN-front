@@ -14,7 +14,7 @@ export function BackButton({
     <button
       type="button"
       onClick={onClick}
-      className="mb-5 inline-flex items-center gap-2 rounded-lg py-1 text-xs font-bold text-[#6d7b87] transition hover:text-[#075394]"
+      className="mb-5 inline-flex items-center gap-2 rounded-lg py-1 text-xs font-bold text-gray-500 transition hover:text-black"
     >
       <ArrowLeft size={14} /> {label}
     </button>
@@ -55,7 +55,7 @@ export function Field({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setShowPassword((prev) => !prev)}
             title={showPassword ? "Ocultar senha" : "Visualizar senha"}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#75838f] transition hover:bg-[#edf2f6] hover:text-[#075394]"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black"
           >
             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -137,10 +137,10 @@ export function PageTitle({
             {eyebrow}
           </p>
         )}
-        <h1 className="text-[29px] font-extrabold tracking-[-.06em] text-[#062f61] md:text-[34px]">
+        <h1 className="text-[29px] font-extrabold tracking-[-.05em] text-[#111827] md:text-[34px]">
           {title}
         </h1>
-        <p className="mt-2 text-sm text-[#707c87]">{description}</p>
+        <p className="mt-2 text-sm text-[#4b5563]">{description}</p>
       </div>
       {action}
     </div>
@@ -156,25 +156,31 @@ export function OpportunityCard({
 }) {
   const badgeColor = getBadgeColorByType(item.type, item.color);
   return (
-    <article className="startin-opp-card transition">
-      <div className="flex items-start justify-between">
-        <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold ${badgeColor}`}>
+    <article className="startin-opp-card flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-xs transition hover:border-[#111827] hover:shadow-md overflow-hidden min-w-0 w-full">
+      <div className="flex items-start justify-between gap-3">
+        <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold shrink-0 ${badgeColor}`}>
           {formatOppType(item.type)}
         </span>
-        <div className="text-right">
-          <div className="text-[24px] font-extrabold tracking-[-.06em] text-[#25805e]">
+        <div className="text-right shrink-0">
+          <div className="text-[24px] font-extrabold tracking-[-.06em] text-[#15803d]">
             {item.match}%
           </div>
           <div className="text-[10px] text-[#94a0a8]">match</div>
         </div>
       </div>
-      <h3 className="mt-4 text-[15px] font-extrabold leading-5 text-[#123b62]">{item.title}</h3>
-      <p className="mt-2 text-xs leading-5 text-[#75818b]">{item.short}</p>
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#eef1f3] pt-4">
-        <span className="text-[10px] text-[#89959e]">Combina por: {item.tags}</span>
+      <div className="my-3 min-w-0 flex-1 overflow-hidden">
+        <h3 className="text-[15px] font-extrabold leading-5 text-[#111827] break-words line-clamp-2">
+          {item.title}
+        </h3>
+        <p className="mt-2 text-xs leading-5 text-[#4b5563] break-all break-words line-clamp-3 overflow-hidden text-ellipsis">
+          {item.short}
+        </p>
+      </div>
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#eef1f3] pt-4 min-w-0">
+        <span className="text-[10px] text-[#89959e] truncate max-w-[65%]">Combina por: {item.tags}</span>
         <button
           onClick={() => onSelect(item)}
-          className="flex shrink-0 items-center gap-1 text-xs font-extrabold text-[#075394]"
+          className="flex shrink-0 items-center gap-1 text-xs font-extrabold text-[#111827] hover:underline"
         >
           Ver oportunidade <ArrowRight size={13} />
         </button>

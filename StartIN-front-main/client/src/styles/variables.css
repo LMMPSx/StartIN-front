@@ -1,51 +1,52 @@
 :root {
-  /* Paleta Principal Figma StartIn */
-  --startin-navy: #062f61;
-  --startin-navy-dark: #052e5f;
-  --startin-blue: #075394;
-  --startin-blue-hover: #064577;
-  --startin-yellow: #ffd43b;
-  --startin-green: #25805e;
-  --startin-danger: #d71920;
+  /* Paleta Oficial da Marca StartIn (Baseada no Ícone Oficial) */
+  --startin-navy: #111827;
+  --startin-navy-dark: #000000;
+  --startin-blue: #111827;
+  --startin-blue-hover: #000000;
+  --startin-yellow: #FEC908;
+  --startin-yellow-hover: #E5B300;
+  --startin-green: #15803d;
+  --startin-danger: #dc2626;
 
-  /* Superfícies e Fundos */
-  --background: #f7f9fb;
-  --background-auth: #f3f5f8;
-  --foreground: #112d4f;
+  /* Superfícies e Fundos - o que é branco segue da cor branca */
+  --background: #f9fafb;
+  --background-auth: #ffffff;
+  --foreground: #111827;
   --card: #ffffff;
-  --card-foreground: #112d4f;
+  --card-foreground: #111827;
   --popover: #ffffff;
-  --popover-foreground: #112d4f;
+  --popover-foreground: #111827;
 
   /* Tokens Semânticos */
-  --primary: #075394;
+  --primary: #111827;
   --primary-foreground: #ffffff;
-  --secondary: #eaf2f8;
-  --secondary-foreground: #075394;
-  --muted: #f3f6f8;
-  --muted-foreground: #778691;
-  --accent: #ffd43b;
-  --accent-foreground: #3f3200;
+  --secondary: #fffbeb;
+  --secondary-foreground: #854d0e;
+  --muted: #f3f4f6;
+  --muted-foreground: #64748b;
+  --accent: #FEC908;
+  --accent-foreground: #111827;
 
   /* Bordas e Inputs */
-  --border: #e2e7eb;
-  --border-subtle: #e5eaee;
-  --input: #dfe5e9;
-  --ring: #a9c7dd;
+  --border: #e5e7eb;
+  --border-subtle: #f3f4f6;
+  --input: #e5e7eb;
+  --ring: #FEC908;
   --radius: 0.65rem;
 
-  /* Cores dos Badges de Oportunidades (Figma) */
-  --badge-edital-bg: #fff2b8;
-  --badge-edital-text: #795900;
-  --badge-poc-bg: #d9f1e5;
-  --badge-poc-text: #16734d;
-  --badge-evento-bg: #dff1f5;
-  --badge-evento-text: #1e7080;
-  --badge-compra-bg: #ffe1c3;
-  --badge-compra-text: #975524;
+  /* Cores dos Badges de Oportunidades */
+  --badge-edital-bg: #fef08a;
+  --badge-edital-text: #854d0e;
+  --badge-poc-bg: #dcfce7;
+  --badge-poc-text: #166534;
+  --badge-evento-bg: #f1f5f9;
+  --badge-evento-text: #334155;
+  --badge-compra-bg: #fef3c7;
+  --badge-compra-text: #92400e;
 
   /* Sombras */
-  --shadow-primary-btn: 0 8px 16px rgba(7, 83, 148, 0.16);
-  --shadow-auth-card: 0 20px 60px rgba(6, 47, 97, 0.06);
-  --shadow-card-hover: 0 12px 28px rgba(6, 47, 97, 0.08);
+  --shadow-primary-btn: 0 6px 14px rgba(17, 24, 39, 0.14);
+  --shadow-auth-card: 0 20px 60px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 10px 24px rgba(0, 0, 0, 0.08);
 }

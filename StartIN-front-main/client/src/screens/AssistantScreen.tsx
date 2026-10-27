@@ -60,13 +60,13 @@ export function Assistant({
         description="Sua IA para buscar oportunidades na web, analisar dados e apoiar decisões."
       />
       <div className="mt-8 grid gap-5 lg:grid-cols-[.75fr_1.25fr]">
-        <aside className="flex flex-col justify-between rounded-2xl bg-[#075394] p-6 text-white lg:h-[480px]">
+        <aside className="flex flex-col justify-between rounded-2xl bg-[#111827] p-6 text-white lg:h-[480px]">
           <div>
-            <Bot size={25} className="text-[#ffd43b]" />
+            <Bot size={25} className="text-[#FEC908]" />
             <h2 className="mt-6 text-[25px] font-extrabold leading-7 tracking-[-.05em]">
               Como posso ajudar?
             </h2>
-            <p className="mt-3 text-sm leading-5 text-[#c7dceb]">
+            <p className="mt-3 text-sm leading-5 text-gray-300">
               Posso ajudar você a encontrar oportunidades mais relevantes para o perfil da sua startup.
             </p>
           </div>
@@ -91,11 +91,11 @@ export function Assistant({
         <section className="flex h-[480px] max-h-[480px] flex-col overflow-hidden rounded-2xl border border-[#e1e6ea] bg-white">
           <div className="shrink-0 border-b border-[#edf0f2] p-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#eaf2f8] text-[#075394]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-[#111827]">
                 <Bot size={18} />
               </div>
               <div>
-                <p className="text-sm font-extrabold text-[#123b62]">STARTIN IA</p>
+                <p className="text-sm font-extrabold text-[#111827]">STARTIN IA</p>
                 <p className="text-[10px] text-[#8b969f]">Online agora · Escopo exclusivo StartIn</p>
               </div>
             </div>
@@ -109,7 +109,7 @@ export function Assistant({
                 <div
                   className={`max-w-[80%] break-words rounded-2xl px-4 py-3 text-xs leading-5 ${
                     m.from === "me"
-                      ? "rounded-br-sm bg-[#075394] text-white"
+                      ? "rounded-br-sm bg-[#111827] text-white"
                       : "rounded-bl-sm bg-[#f0f5f8] text-[#42617e]"
                   }`}
                 >
@@ -136,7 +136,7 @@ export function Assistant({
             <button
               onClick={() => send()}
               disabled={loading}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#075394] text-white disabled:opacity-60"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#111827] text-[#FEC908] transition hover:bg-black disabled:opacity-60"
             >
               <Send size={15} />
             </button>

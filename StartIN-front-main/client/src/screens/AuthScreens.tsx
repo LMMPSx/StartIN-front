@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Mail } from "@/icons";
+import { ArrowLeft, ArrowRight, Building2, Check, Mail, Rocket } from "@/icons";
 import { Field, PrimaryButton } from "@/components/startin/CommonUI";
 import { AuthShell } from "@/components/startin/ShellLayout";
 import { api, getSession, saveSession } from "@/lib/api";
-import type { Screen } from "@/types/startin";
+import type { AccountType, Screen } from "@/types/startin";
 
 export function Login({
   go,
@@ -27,18 +27,23 @@ export function Login({
     setLoading(true);
     try {
       const res = await api.login({ email, password });
+      const accountType: AccountType =
+        res.accountType === "COMPANY" ? "COMPANY" : "STARTUP";
       saveSession({
         token: res.token,
         userId: res.userId,
         startupProfileId: res.startupProfileId,
+        companyId: res.companyId,
+        accountType,
         email: res.email,
         name: res.name,
         cnpj: res.cnpj,
+        phone: res.phone,
         avatarUrl: res.avatarUrl,
       });
       localStorage.setItem("startin-auth", "1");
       onAuthSuccess();
-      go("dashboard");
+      go(accountType === "COMPANY" ? "search-startups" : "dashboard");
     } catch (err: any) {
       setError(err.message || "Não foi possível entrar. Verifique suas credenciais.");
     } finally {
@@ -50,17 +55,17 @@ export function Login({
     <AuthShell
       sideTitle={
         <>
-          Conecte sua startup a oportunidades <span className="text-[#ffd43b]">certas.</span>
+          Conecte sua startup ou empresa a oportunidades <span className="text-[#FEC908]">certas.</span>
         </>
       }
-      sideText="Editais, eventos e clientes em um só lugar, personalizados com IA para o seu negócio."
+      sideText="Editais, eventos, POCs e conexões corporativas em um só lugar, personalizados com IA."
     >
       <div>
-        <p className="text-sm font-semibold text-[#6c7782]">Bem-vinda à StartIn</p>
-        <h2 className="mt-2 text-[28px] font-extrabold tracking-[-.05em] text-[#062f61]">
+        <p className="text-sm font-semibold text-gray-500">Bem-vinda à StartIn</p>
+        <h2 className="mt-2 text-[28px] font-extrabold tracking-[-.05em] text-[#111827]">
           Entre na sua conta
         </h2>
-        <p className="mt-2 text-sm text-[#77818c]">Acesse suas oportunidades personalizadas.</p>
+        <p className="mt-2 text-sm text-gray-500">Acesse suas oportunidades personalizadas.</p>
         {error && (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
             {error}
@@ -78,7 +83,7 @@ export function Login({
           <button
             type="button"
             onClick={() => go("recovery")}
-            className="-mt-2 text-left text-xs font-semibold text-[#075394] hover:underline"
+            className="-mt-2 text-left text-xs font-semibold text-[#111827] hover:underline"
           >
             Esqueceu sua senha?
           </button>
@@ -106,7 +111,15 @@ export function Signup({
   go: (screen: Screen) => void;
   onAuthSuccess: () => void;
 }) {
-  const [form, setForm] = useState({ cnpj: "", email: "", password: "", confirm: "" });
+  const [accountType, setAccountType] = useState<AccountType>("STARTUP");
+  const [form, setForm] = useState({
+    name: "",
+    cnpj: "",
+    phone: "",
+    email: "",
+    password: "",
+    confirm: "",
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const set = (key: keyof typeof form) => (value: string) =>
@@ -125,14 +138,25 @@ export function Signup({
     }
     setLoading(true);
     try {
-      const res = await api.signup(form);
+      const res = await api.signup({
+        ...form,
+        accountType,
+        name:
+          form.name.trim() ||
+          (accountType === "COMPANY" ? "Nova Empresa" : "Nova Startup"),
+      });
+      const resolvedType: AccountType =
+        res.accountType === "COMPANY" ? "COMPANY" : accountType;
       saveSession({
         token: res.token,
         userId: res.userId,
         startupProfileId: res.startupProfileId,
+        companyId: res.companyId,
+        accountType: resolvedType,
         email: res.email,
-        name: res.name,
+        name: res.name || form.name,
         cnpj: res.cnpj || form.cnpj,
+        phone: res.phone || form.phone,
         avatarUrl: res.avatarUrl,
       });
       onAuthSuccess();
@@ -148,33 +172,93 @@ export function Signup({
     <AuthShell
       sideTitle={
         <>
-          Crie sua conta e comece a encontrar <span className="text-[#ffd43b]">oportunidades.</span>
+          Crie sua conta e comece a encontrar{" "}
+          <span className="text-[#FEC908]">
+            {accountType === "COMPANY" ? "startups ideais." : "oportunidades."}
+          </span>
         </>
       }
-      sideText="Cadastre-se para conectar sua startup a editais, eventos, POCs e clientes personalizados com IA."
+      sideText={
+        accountType === "COMPANY"
+          ? "Cadastre sua empresa para lançar desafios de POC, Compra ou POC + Compra e encontrar startups aderentes com IA."
+          : "Cadastre-se para conectar sua startup a editais, eventos, empresas, POCs e clientes personalizados com IA."
+      }
     >
       <div>
         <button
           onClick={() => go("login")}
-          className="mb-7 flex items-center gap-2 text-xs font-bold text-[#71808e]"
+          className="mb-6 flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black"
         >
           <ArrowLeft size={14} /> Voltar para login
         </button>
-        <h2 className="text-[28px] font-extrabold tracking-[-.05em] text-[#062f61]">
+        <h2 className="text-[28px] font-extrabold tracking-[-.05em] text-[#111827]">
           Crie sua conta
         </h2>
-        <p className="mt-2 text-sm text-[#77818c]">Preencha seus dados para começar.</p>
+        <p className="mt-1.5 text-sm text-gray-500">
+          Selecione seu perfil abaixo e preencha seus dados para começar.
+        </p>
+
+        {/* Seletor de Fluxo na 1ª Etapa do Cadastro: Startup vs Empresa */}
+        <div className="mt-5">
+          <span className="mb-2 block text-xs font-bold text-[#111827]">
+            Qual é o seu perfil na StartIn?
+          </span>
+          <div className="grid grid-cols-2 gap-2.5 rounded-xl border border-gray-200 bg-gray-50 p-1.5">
+            <button
+              type="button"
+              onClick={() => setAccountType("STARTUP")}
+              className={`flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-xs font-extrabold transition ${
+                accountType === "STARTUP"
+                  ? "bg-[#111827] text-[#FEC908] shadow-sm"
+                  : "text-gray-600 hover:bg-white/70"
+              }`}
+            >
+              <Rocket size={15} />
+              Startup
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountType("COMPANY")}
+              className={`flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-xs font-extrabold transition ${
+                accountType === "COMPANY"
+                  ? "bg-[#111827] text-[#FEC908] shadow-sm"
+                  : "text-gray-600 hover:bg-white/70"
+              }`}
+            >
+              <Building2 size={15} />
+              Empresa
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-[#7a8793]">
+            {accountType === "STARTUP"
+              ? "Fluxo Startup: acesso a editais, matches, busca de empresas e recomendações da IA."
+              : "Fluxo Empresa: lançamento de POCs/Compras e busca de startups com match da IA."}
+          </p>
+        </div>
+
         {error && (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
             {error}
           </div>
         )}
-        <form onSubmit={handleSignup} className="mt-7 space-y-4">
+        <form onSubmit={handleSignup} className="mt-5 space-y-4">
+          <Field
+            label={accountType === "COMPANY" ? "Nome da empresa" : "Nome da startup"}
+            placeholder={accountType === "COMPANY" ? "Ex: Empresa Alpha S.A." : "Ex: Nexa Health"}
+            value={form.name}
+            onChange={set("name")}
+          />
           <Field
             label="CNPJ"
             placeholder="AA.AAA.AAA/AAAA-DV"
             value={form.cnpj}
             onChange={set("cnpj")}
+          />
+          <Field
+            label="Telefone / Celular"
+            placeholder="(DD) 99999-9999"
+            value={form.phone}
+            onChange={set("phone")}
           />
           <Field
             label="E-mail"
@@ -198,16 +282,17 @@ export function Signup({
           />
           <p className="text-[11px] leading-4 text-[#88929d]">
             Ao criar sua conta, você concorda com os{" "}
-            <span className="font-semibold text-[#075394]">Termos de Uso</span> e a{" "}
-            <span className="font-semibold text-[#075394]">Política de Privacidade</span>.
+            <span className="font-semibold text-[#111827]">Termos de Uso</span> e a{" "}
+            <span className="font-semibold text-[#111827]">Política de Privacidade</span>.
           </p>
           <PrimaryButton type="submit" full disabled={loading}>
-            Criar conta <ArrowRight size={16} />
+            Criar conta como {accountType === "COMPANY" ? "Empresa" : "Startup"}{" "}
+            <ArrowRight size={16} />
           </PrimaryButton>
         </form>
         <p className="mt-6 text-center text-xs text-[#79848f]">
           Já possui uma conta?{" "}
-          <button onClick={() => go("login")} className="font-bold text-[#075394]">
+          <button onClick={() => go("login")} className="font-bold text-[#111827] hover:underline">
             Entrar
           </button>
         </p>
@@ -242,7 +327,7 @@ export function Recovery({
       <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fff2bf] text-[#755a00]">
         <Mail size={21} />
       </div>
-      <h2 className="text-[28px] font-extrabold tracking-[-.05em] text-[#062f61]">
+      <h2 className="text-[28px] font-extrabold tracking-[-.05em] text-[#111827]">
         Esqueceu sua senha?
       </h2>
       <p className="mt-2 text-sm leading-5 text-[#77818c]">
@@ -290,7 +375,7 @@ export function Reset({
     <AuthShell
       sideTitle={
         <>
-          Recupere o acesso à sua <span className="text-[#ffd43b]">conta.</span>
+          Recupere o acesso à sua <span className="text-[#FEC908]">conta.</span>
         </>
       }
       sideText="Defina uma nova senha segura para continuar usando a StartIn."
@@ -298,11 +383,11 @@ export function Reset({
       <button
         type="button"
         onClick={() => go("recovery")}
-        className="mb-6 flex items-center gap-2 text-xs font-bold text-[#71808e] hover:text-[#075394]"
+        className="mb-6 flex items-center gap-2 text-xs font-bold text-[#71808e] hover:text-[#111827]"
       >
         <ArrowLeft size={14} /> Voltar
       </button>
-      <h2 className="text-[28px] font-extrabold tracking-[-.05em] text-[#062f61]">
+      <h2 className="text-[28px] font-extrabold tracking-[-.05em] text-[#111827]">
         Crie uma nova senha
       </h2>
       <p className="mt-2 text-sm text-[#77818c]">
@@ -338,7 +423,7 @@ export function Verify({ go }: { go: (s: Screen) => void }) {
     <AuthShell
       sideTitle={
         <>
-          Confirme seu e-mail para <span className="text-[#ffd43b]">continuar.</span>
+          Confirme seu e-mail para <span className="text-[#FEC908]">continuar.</span>
         </>
       }
       sideText="Enviamos um link de confirmação para validar sua conta antes de configurar sua startup."
@@ -346,14 +431,14 @@ export function Verify({ go }: { go: (s: Screen) => void }) {
       <button
         type="button"
         onClick={() => go("signup")}
-        className="mb-6 flex items-center gap-2 text-xs font-bold text-[#71808e] hover:text-[#075394]"
+        className="mb-6 flex items-center gap-2 text-xs font-bold text-[#71808e] hover:text-[#111827]"
       >
         <ArrowLeft size={14} /> Voltar para cadastro
       </button>
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#eaf2f8] text-[#075394]">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-[#111827]">
         <Mail size={24} />
       </div>
-      <h2 className="mt-7 text-[28px] font-extrabold tracking-[-.05em] text-[#062f61]">
+      <h2 className="mt-7 text-[28px] font-extrabold tracking-[-.05em] text-[#111827]">
         Verifique seu e-mail
       </h2>
       <p className="mt-3 text-sm leading-5 text-[#77818c]">
@@ -364,7 +449,7 @@ export function Verify({ go }: { go: (s: Screen) => void }) {
           Abrir e-mail <ArrowRight size={16} />
         </PrimaryButton>
       </div>
-      <button className="mt-5 w-full text-center text-xs font-bold text-[#075394]">
+      <button className="mt-5 w-full text-center text-xs font-bold text-[#111827] hover:underline">
         Não recebeu? Reenviar e-mail
       </button>
     </AuthShell>

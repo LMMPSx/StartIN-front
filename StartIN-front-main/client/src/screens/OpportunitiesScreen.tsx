@@ -240,19 +240,24 @@ export function Opportunities({
   return (
     <>
       <BackButton label="Voltar para Dashboard" onClick={() => go("dashboard")} />
+
+      <div className="mb-6 rounded-2xl bg-[#111827] p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="text-[32px] font-black text-[#FEC908]">95%</div>
+          <div className="text-xs text-gray-300">de compatibilidade média com seu perfil</div>
+        </div>
+        <p className="text-xs text-gray-400 max-w-md">Oportunidades, editais e demandas corporativas priorizadas pela IA da StartIn para sua startup.</p>
+      </div>
+
       <PageTitle
-        title={explore ? "Explorar" : "Para você"}
-        description={
-          explore
-            ? "Explore editais, eventos e clientes disponíveis na StartIn."
-            : "O que a IA da StartIn encontrou para sua startup."
-        }
+        title="Para você"
+        description="O que a IA da StartIn encontrou e priorizou para sua startup."
       />
 
-      {!explore && preferredTypesList.length > 0 && (
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#d6e5f3] bg-[#eef5fb] px-4 py-3">
-          <div className="flex items-center gap-2 text-xs text-[#194973]">
-            <Sparkles size={15} className="text-[#075394]" />
+      {preferredTypesList.length > 0 && (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs text-[#111827]">
+            <Sparkles size={15} className="text-[#FEC908]" />
             <span>
               Preferências de matching da startup:{" "}
               <strong>{profile?.opportunityTypes || "POC, Compra, Editais"}</strong>
@@ -265,16 +270,16 @@ export function Opportunities({
               onClick={() => setApplyProfilePrefs((prev) => !prev)}
               className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
                 applyProfilePrefs
-                  ? "bg-[#075394] text-white"
-                  : "bg-white text-[#486680] ring-1 ring-[#cfdbe6]"
+                  ? "bg-[#111827] text-white"
+                  : "bg-white text-gray-700 border border-gray-300"
               }`}
             >
               {applyProfilePrefs ? "Filtro do perfil ativo" : "Mostrando todos os tipos"}
             </button>
             <button
               type="button"
-              onClick={() => go("startup")}
-              className="text-[11px] font-bold text-[#075394] hover:underline"
+              onClick={() => go("account")}
+              className="text-[11px] font-bold text-[#111827] hover:underline"
             >
               Editar preferências
             </button>
@@ -301,13 +306,13 @@ export function Opportunities({
           onClick={() => setShowFilters((prev) => !prev)}
           className={`flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-xs font-bold transition ${
             showFilters || activeFiltersCount > 0
-              ? "border-[#075394] bg-[#eaf2f8] text-[#075394]"
+              ? "border-[#111827] bg-gray-100 text-[#111827]"
               : "border-[#dfe5e9] text-[#42617e] hover:bg-[#f5f8fa]"
           }`}
         >
           <Filter size={14} /> Filtros
           {activeFiltersCount > 0 && (
-            <span className="rounded-full bg-[#075394] px-1.5 py-0.5 text-[10px] text-white">
+            <span className="rounded-full bg-[#111827] px-1.5 py-0.5 text-[10px] text-white">
               {activeFiltersCount}
             </span>
           )}
@@ -341,8 +346,8 @@ export function Opportunities({
                   }}
                   className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${
                     sortBy === optKey
-                      ? "bg-[#eaf2f8] text-[#075394]"
-                      : "text-[#42617e] hover:bg-[#f5f8fa]"
+                      ? "bg-gray-100 text-[#111827] font-bold"
+                      : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   {label}
@@ -355,9 +360,9 @@ export function Opportunities({
       </div>
 
       {showFilters && (
-        <div className="mt-3 rounded-xl border border-[#dce4eb] bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#edf1f4] pb-3">
-            <span className="text-xs font-extrabold text-[#123b62]">
+        <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <span className="text-xs font-extrabold text-[#111827]">
               Filtrar por plataforma, formato e aderência
             </span>
             <button
@@ -367,14 +372,14 @@ export function Opportunities({
                 setSelectedModality("Todas");
                 setMinMatch(0);
               }}
-              className="text-[11px] font-bold text-[#075394] hover:underline"
+              className="text-[11px] font-bold text-[#111827] hover:underline"
             >
               Resetar filtros
             </button>
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <div>
-              <p className="mb-2 text-[11px] font-bold text-[#52697d]">
+              <p className="mb-2 text-[11px] font-bold text-gray-700">
                 Plataforma / Origem encontrada
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -385,8 +390,8 @@ export function Opportunities({
                     onClick={() => setSelectedPlatform(plat)}
                     className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
                       selectedPlatform === plat
-                        ? "bg-[#075394] text-white"
-                        : "bg-[#f3f6f8] text-[#4b657d] hover:bg-[#e5ecf1]"
+                        ? "bg-[#111827] text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     {plat}
@@ -396,7 +401,7 @@ export function Opportunities({
             </div>
 
             <div>
-              <p className="mb-2 text-[11px] font-bold text-[#52697d]">Modalidade</p>
+              <p className="mb-2 text-[11px] font-bold text-gray-700">Modalidade</p>
               <div className="flex flex-wrap gap-1.5">
                 {["Todas", "Remoto", "Presencial", "Híbrido"].map((mod) => (
                   <button
@@ -405,8 +410,8 @@ export function Opportunities({
                     onClick={() => setSelectedModality(mod)}
                     className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
                       selectedModality === mod
-                        ? "bg-[#075394] text-white"
-                        : "bg-[#f3f6f8] text-[#4b657d] hover:bg-[#e5ecf1]"
+                        ? "bg-[#111827] text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     {mod}
@@ -416,7 +421,7 @@ export function Opportunities({
             </div>
 
             <div>
-              <p className="mb-2 text-[11px] font-bold text-[#52697d]">Aderência mínima</p>
+              <p className="mb-2 text-[11px] font-bold text-gray-700">Aderência mínima</p>
               <div className="flex flex-wrap gap-1.5">
                 {[
                   [0, "Todas"],
@@ -430,8 +435,8 @@ export function Opportunities({
                     onClick={() => setMinMatch(Number(val))}
                     className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
                       minMatch === Number(val)
-                        ? "bg-[#075394] text-white"
-                        : "bg-[#f3f6f8] text-[#4b657d] hover:bg-[#e5ecf1]"
+                        ? "bg-[#111827] text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     {label}
@@ -448,10 +453,10 @@ export function Opportunities({
           <button
             key={x}
             onClick={() => setType(x)}
-            className={`rounded-full px-5 py-2 text-xs font-bold whitespace-nowrap ${
+            className={`rounded-full px-5 py-2 text-xs font-bold whitespace-nowrap transition ${
               type === x
-                ? "bg-[#075394] text-white"
-                : "bg-white text-[#45617e] ring-1 ring-[#e3e8ec]"
+                ? "bg-[#111827] text-white shadow-sm"
+                : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
             }`}
           >
             {x}
@@ -484,7 +489,7 @@ export function Opportunities({
               setMinMatch(0);
               setApplyProfilePrefs(false);
             }}
-            className="text-xs font-bold text-[#075394] hover:underline"
+            className="text-xs font-bold text-[#111827] hover:underline"
           >
             Limpar filtros
           </button>
@@ -505,7 +510,7 @@ export function Opportunities({
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-dashed border-[#d9e0e5] bg-white py-16 text-center">
-          <Sparkles className="mx-auto text-[#ffd43b]" size={30} fill="currentColor" />
+          <Sparkles className="mx-auto text-[#FEC908]" size={30} fill="currentColor" />
           <p className="mt-4 text-sm font-bold text-[#234666]">
             Não encontramos oportunidades compatíveis com os filtros atuais
           </p>
@@ -522,13 +527,13 @@ export function Opportunities({
                 setMinMatch(0);
                 setApplyProfilePrefs(false);
               }}
-              className="text-xs font-bold text-[#075394] hover:underline"
+              className="text-xs font-bold text-[#111827] hover:underline"
             >
               Mostrar todas as oportunidades
             </button>
             <button
               onClick={() => go("preferences")}
-              className="text-xs font-bold text-[#075394] hover:underline"
+              className="text-xs font-bold text-[#111827] hover:underline"
             >
               Atualizar preferências
             </button>
@@ -554,6 +559,8 @@ export function OpportunityDetail({
 }) {
   const [item, setItem] = useState<OpportunityItem | null>(selectedOpportunity);
   const [joined, setJoined] = useState(false);
+  const [matchId, setMatchId] = useState<number | undefined>(undefined);
+  const [savingStatus, setSavingStatus] = useState(false);
 
   useEffect(() => {
     if (selectedOpportunity) {
@@ -564,6 +571,24 @@ export function OpportunityDetail({
           x.title === selectedOpportunity.title
       );
       setJoined(savedLocally);
+      api
+        .getMatches(startupId)
+        .then((matches) => {
+          const found = matches.find(
+            (m) =>
+              String(m.opportunityId) === String(selectedOpportunity.id) ||
+              (m.opportunityTitle &&
+                selectedOpportunity.title &&
+                m.opportunityTitle.toLowerCase() === selectedOpportunity.title.toLowerCase())
+          );
+          if (found) {
+            setMatchId(found.id);
+            const isSavedInDb =
+              found.status === "INTERESSE_ENVIADO" || found.status === "SALVO";
+            setJoined(isSavedInDb || savedLocally);
+          }
+        })
+        .catch(() => {});
     } else {
       api
         .getOpportunities()
@@ -572,18 +597,30 @@ export function OpportunityDetail({
         })
         .catch(() => {});
     }
-  }, [selectedOpportunity]);
+  }, [selectedOpportunity, startupId]);
 
   const handleParticipate = async () => {
-    if (!item) return;
-    setJoined(true);
-    saveOpportunityLocally(item);
+    if (!item || savingStatus) return;
+    setSavingStatus(true);
     try {
-      await api.participateInOpportunity(startupId, item.id);
-    } catch {
-      // Salvo localmente mesmo se offline
+      if (joined) {
+        // Remover interesse tanto localmente quanto no MySQL
+        setJoined(false);
+        removeOpportunityLocally(item.id);
+        removeOpportunityLocally(item.title);
+        await api
+          .unparticipateInOpportunity(startupId, item.id, matchId, item.title)
+          .catch(() => {});
+      } else {
+        // Salvar interesse tanto localmente quanto no MySQL
+        setJoined(true);
+        saveOpportunityLocally(item);
+        await api.participateInOpportunity(startupId, item.id).catch(() => {});
+      }
+      onSavedChange?.();
+    } finally {
+      setSavingStatus(false);
     }
-    onSavedChange?.();
   };
 
   if (!item) return <p className="text-sm text-[#73808b]">Carregando oportunidade...</p>;
@@ -600,19 +637,25 @@ export function OpportunityDetail({
       ? "Prova de conceito"
       : formatOppType(item.type);
 
+  const rawUrl = (item.externalUrl || item.url || "").trim();
   const specificUrl =
-    item.externalUrl ||
-    (item.title.toLowerCase().includes("fapesp")
-      ? "https://fapesp.br/pipe/chamadas"
+    rawUrl &&
+    rawUrl !== "https://inovastartups.com.br/" &&
+    rawUrl !== "https://inovastartups.com.br" &&
+    rawUrl !== "https://fapesp.br/pipe/chamadas" &&
+    rawUrl !== "http://www.finep.gov.br/chamadas-publicas/chamadaspublicas?situacao=aberta"
+      ? rawUrl
+      : item.title.toLowerCase().includes("fapesp")
+      ? "https://fapesp.br/pipe/jornada-tecnologica-2026-fase-1"
       : item.title.toLowerCase().includes("finep")
-      ? "http://www.finep.gov.br/chamadas-publicas/chamadaspublicas?situacao=aberta"
-      : "https://inovastartups.com.br/");
+      ? "https://legacy.finep.gov.br/a-finep-externo/edital-efpc"
+      : "https://inovastartups.com.br/edital-inova-6a-edicao.pdf";
 
   return (
     <>
       <button
         onClick={() => go("for-you")}
-        className="mb-7 flex items-center gap-2 text-xs font-bold text-[#6d7b87] hover:text-[#075394]"
+        className="mb-7 flex items-center gap-2 text-xs font-bold text-[#6d7b87] hover:text-[#111827]"
       >
         <ArrowLeft size={14} /> Voltar para Para você
       </button>
@@ -627,11 +670,11 @@ export function OpportunityDetail({
             >
               {formatOppType(item.type).toUpperCase()}
             </span>
-            <span className="rounded-full bg-[#edf3f8] px-3 py-1 text-[10px] font-bold text-[#075394]">
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold text-[#111827]">
               Fonte: {detectPlatformLabel(item)}
             </span>
           </div>
-          <h1 className="mt-4 text-[29px] font-extrabold tracking-[-.05em] text-[#062f61]">
+          <h1 className="mt-4 text-[29px] font-extrabold tracking-[-.05em] text-[#111827]">
             {item.title}
           </h1>
           <p className="mt-2 text-sm text-[#73808b]">{item.short || item.shortDescription}</p>
@@ -658,24 +701,10 @@ export function OpportunityDetail({
       </div>
       <div className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
         <section className="rounded-2xl border border-[#e2e7eb] bg-white p-6">
-          <h2 className="text-lg font-extrabold text-[#123b62]">Sobre a oportunidade</h2>
+          <h2 className="text-lg font-extrabold text-[#111827]">Sobre a oportunidade</h2>
           <p className="mt-4 text-sm leading-7 text-[#65747f]">{item.description}</p>
 
-          <div className="mt-6 rounded-xl border border-[#dbe6ef] bg-[#f7fafc] p-4">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#5b7287]">
-              Link específico extraído via RAG
-            </p>
-            <a
-              href={specificUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1.5 inline-flex items-center gap-1.5 break-all text-xs font-bold text-[#075394] hover:underline"
-            >
-              {specificUrl} <ExternalLink size={13} />
-            </a>
-          </div>
-
-          <h3 className="mt-8 text-sm font-extrabold text-[#123b62]">
+          <h3 className="mt-8 text-sm font-extrabold text-[#111827]">
             Por que este match faz sentido
           </h3>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -697,26 +726,26 @@ export function OpportunityDetail({
               ["03", "Objetivo", profile?.mainObjective || "Validação em ambiente real"],
             ].map(([n, t, d]) => (
               <div key={n} className="rounded-xl bg-[#f5f8fa] p-4">
-                <div className="text-[10px] font-extrabold text-[#075394]">{n}</div>
+                <div className="text-[10px] font-extrabold text-[#111827]">{n}</div>
                 <p className="mt-3 text-xs font-bold text-[#345572]">{t}</p>
                 <p className="mt-1 text-[11px] leading-4 text-[#81909b]">{d}</p>
               </div>
             ))}
           </div>
         </section>
-        <aside className="h-fit rounded-2xl bg-[#eaf2f8] p-6">
-          <Sparkles className="text-[#075394]" size={20} />
-          <h2 className="mt-4 text-lg font-extrabold leading-6 text-[#123b62]">
+        <aside className="h-fit rounded-2xl border border-gray-200 bg-gray-50 p-6">
+          <Sparkles className="text-[#FEC908]" size={20} />
+          <h2 className="mt-4 text-lg font-extrabold leading-6 text-[#111827]">
             Essa oportunidade combina com você
           </h2>
           <p className="mt-3 text-xs leading-5 text-[#6d7e8b]">
             A IA identificou alta aderência entre seu perfil, suas tecnologias e os requisitos.
           </p>
           <div className="mt-5 space-y-2.5">
-            <PrimaryButton full onClick={handleParticipate}>
+            <PrimaryButton full disabled={savingStatus} onClick={handleParticipate}>
               {joined ? (
                 <>
-                  <Check size={16} /> Interesse registrado (Salvo)
+                  <Check size={16} /> Interesse registrado (Clique para remover)
                 </>
               ) : (
                 <>
@@ -729,7 +758,7 @@ export function OpportunityDetail({
               href={specificUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#075394] bg-white px-4 text-xs font-extrabold text-[#075394] transition hover:bg-[#f0f6fb]"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#111827] bg-white px-4 text-xs font-extrabold text-[#111827] transition hover:bg-gray-100"
             >
               Acessar página oficial da oportunidade <ExternalLink size={14} />
             </a>
@@ -747,7 +776,7 @@ export function OpportunityDetail({
 
           <button
             onClick={() => go("for-you")}
-            className="mt-3 w-full text-center text-xs font-bold text-[#075394]"
+            className="mt-3 w-full text-center text-xs font-bold text-[#111827] hover:underline"
           >
             Voltar para oportunidades
           </button>
@@ -768,7 +797,7 @@ export function SavedOpportunities({
   onSelectOpportunity: (o: OpportunityItem) => void;
   onSavedChange?: () => void;
 }) {
-  const [savedList, setSavedList] = useState<OpportunityItem[]>([]);
+  const [savedList, setSavedList] = useState<(OpportunityItem & { matchId?: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadSaved = () => {
@@ -777,10 +806,11 @@ export function SavedOpportunities({
     api
       .getMatches(startupId)
       .then((matches) => {
-        const backendSaved: OpportunityItem[] = matches
+        const backendSaved: (OpportunityItem & { matchId?: number })[] = matches
           .filter((m) => m.status === "INTERESSE_ENVIADO" || m.status === "SALVO")
           .map((m) => ({
             id: m.opportunityId || m.id,
+            matchId: m.id,
             code: m.opportunityCode,
             type: formatOppType(m.opportunityType),
             title: m.opportunityTitle,
@@ -793,7 +823,7 @@ export function SavedOpportunities({
             externalUrl: m.opportunityExternalUrl,
           }));
 
-        const mergedMap = new Map<string, OpportunityItem>();
+        const mergedMap = new Map<string, OpportunityItem & { matchId?: number }>();
         [...localItems, ...backendSaved].forEach((item) => {
           mergedMap.set(item.title.toLowerCase(), item);
         });
@@ -809,10 +839,21 @@ export function SavedOpportunities({
     loadSaved();
   }, [startupId]);
 
-  const handleRemoveSaved = async (item: OpportunityItem) => {
+  const handleRemoveSaved = async (item: OpportunityItem & { matchId?: number }) => {
     removeOpportunityLocally(item.id);
     removeOpportunityLocally(item.title);
-    setSavedList((prev) => prev.filter((x) => x.title !== item.title));
+    setSavedList((prev) =>
+      prev.filter(
+        (x) =>
+          String(x.id) !== String(item.id) &&
+          x.title.toLowerCase() !== item.title.toLowerCase()
+      )
+    );
+    try {
+      await api.unparticipateInOpportunity(startupId, item.id, item.matchId, item.title);
+    } catch {
+      // Ignora falha de rede local
+    }
     onSavedChange?.();
   };
 
@@ -835,19 +876,31 @@ export function SavedOpportunities({
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {savedList.map((item) => {
             const badgeColor = getBadgeColorByType(item.type, item.color);
-            const url = item.externalUrl || "https://inovastartups.com.br/";
+            const raw = (item.externalUrl || item.url || "").trim();
+            const url =
+              raw &&
+              raw !== "https://inovastartups.com.br/" &&
+              raw !== "https://inovastartups.com.br" &&
+              raw !== "https://fapesp.br/pipe/chamadas" &&
+              raw !== "http://www.finep.gov.br/chamadas-publicas/chamadaspublicas?situacao=aberta"
+                ? raw
+                : item.title.toLowerCase().includes("fapesp")
+                ? "https://fapesp.br/pipe/jornada-tecnologica-2026-fase-1"
+                : item.title.toLowerCase().includes("finep")
+                ? "https://legacy.finep.gov.br/a-finep-externo/edital-efpc"
+                : "https://inovastartups.com.br/edital-inova-6a-edicao.pdf";
             return (
-              <article key={`${item.id}-${item.title}`} className="startin-opp-card transition">
+              <article key={`${item.id}-${item.title}`} className="startin-opp-card flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-xs transition hover:border-[#111827] hover:shadow-md overflow-hidden min-w-0 w-full">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold ${badgeColor}`}>
+                    <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold shrink-0 ${badgeColor}`}>
                       {formatOppType(item.type)}
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#e5f6ed] px-2.5 py-1 text-[10px] font-bold text-[#18734d]">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#e5f6ed] px-2.5 py-1 text-[10px] font-bold text-[#18734d] shrink-0">
                       <Check size={11} /> Interesse registrado
                     </span>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <div className="text-[22px] font-extrabold tracking-[-.06em] text-[#25805e]">
                       {item.match}%
                     </div>
@@ -855,13 +908,15 @@ export function SavedOpportunities({
                   </div>
                 </div>
 
-                <h3 className="mt-4 text-[15px] font-extrabold leading-5 text-[#123b62]">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-xs leading-5 text-[#75818b]">{item.short}</p>
-                <p className="mt-2 text-[11px] font-semibold text-[#5a7184]">{item.meta}</p>
+                <div className="my-3 min-w-0 flex-1 overflow-hidden">
+                  <h3 className="text-[15px] font-extrabold leading-5 text-[#111827] break-words line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-xs leading-5 text-[#75818b] break-all break-words line-clamp-3 overflow-hidden text-ellipsis">{item.short}</p>
+                  <p className="mt-2 text-[11px] font-semibold text-[#5a7184] truncate">{item.meta}</p>
+                </div>
 
-                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#eef1f3] pt-4">
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#eef1f3] pt-4 min-w-0">
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
@@ -869,7 +924,7 @@ export function SavedOpportunities({
                         onSelectOpportunity(item);
                         go("opportunity");
                       }}
-                      className="flex items-center gap-1 text-xs font-extrabold text-[#075394] hover:underline"
+                      className="flex items-center gap-1 text-xs font-extrabold text-[#111827] hover:underline"
                     >
                       Ver detalhes <ArrowRight size={13} />
                     </button>
@@ -898,7 +953,7 @@ export function SavedOpportunities({
         </div>
       ) : (
         <div className="mt-8 rounded-2xl border border-dashed border-[#d9e0e5] bg-white py-16 text-center">
-          <Bookmark className="mx-auto text-[#075394]" size={30} />
+          <Bookmark className="mx-auto text-[#111827]" size={30} />
           <p className="mt-4 text-sm font-bold text-[#234666]">
             Você ainda não registrou interesse em nenhuma oportunidade
           </p>

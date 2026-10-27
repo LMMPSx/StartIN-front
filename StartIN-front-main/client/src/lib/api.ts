@@ -7,10 +7,13 @@ const API_BASE_URL = "http://localhost:8080/api";
 export interface UserSession {
   token?: string;
   userId: number;
-  startupProfileId: number;
+  startupProfileId?: number;
+  companyId?: number;
+  accountType?: "STARTUP" | "COMPANY";
   email: string;
   name: string;
   cnpj?: string;
+  phone?: string;
   avatarUrl?: string;
 }
 
@@ -38,6 +41,7 @@ export function clearSession(): void {
 
 export interface OpportunityItem {
   id: string | number;
+  matchId?: number;
   code?: string;
   type: string;
   title: string;
@@ -52,6 +56,67 @@ export interface OpportunityItem {
   color?: string;
   status?: string;
   externalUrl?: string;
+  companyId?: number;
+  companyName?: string;
+}
+
+export interface CompanyProfileData {
+  id?: number;
+  userId?: number;
+  name: string;
+  type: string;
+  sector: string;
+  location: string;
+  cnpj?: string;
+  phone?: string;
+  website?: string;
+  description: string;
+  demands: string;
+  tags: string;
+  preferredStage?: string;
+  operationMode?: string;
+  avatarUrl?: string;
+}
+
+export interface StartupMatchItem {
+  startupId: number;
+  startupName: string;
+  mainArea: string;
+  description: string;
+  shortDescription?: string;
+  technologies: string;
+  businessModel: string;
+  currentStage: string;
+  location: string;
+  website?: string;
+  phone?: string;
+  email?: string;
+  avatarUrl?: string;
+  matchScore: number;
+  justification: string;
+  recommendedAction: string;
+  reasons: MatchReasonDetails;
+}
+
+export interface CompanyMatchItem {
+  companyId: number;
+  companyName: string;
+  companyType: string;
+  sector: string;
+  description: string;
+  demands?: string;
+  tags: string;
+  location: string;
+  website?: string;
+  phone?: string;
+  cnpj?: string;
+  operationMode?: string;
+  preferredStage?: string;
+  avatarUrl?: string;
+  matchScore: number;
+  justification: string;
+  recommendedAction: string;
+  reasons: MatchReasonDetails;
 }
 
 export interface MatchReasonDetails {
@@ -93,6 +158,7 @@ export interface StartupProfileData {
   description: string;
   location: string;
   cnpj: string;
+  phone?: string;
   website: string;
   foundedYear: string;
   problem: string;
@@ -173,25 +239,75 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const api = {
   // Autenticação e Conta
   login: (data: { email: string; password: string }) =>
-    request<{ success: boolean; token: string; userId: number; email: string; name: string; cnpj?: string; avatarUrl?: string; startupProfileId: number; message?: string }>(
-      "/auth/login",
-      { method: "POST", body: JSON.stringify(data) }
-    ),
+    request<{
+      success: boolean;
+      token: string;
+      userId: number;
+      email: string;
+      name: string;
+      cnpj?: string;
+      phone?: string;
+      avatarUrl?: string;
+      startupProfileId?: number;
+      companyId?: number;
+      accountType?: "STARTUP" | "COMPANY";
+      message?: string;
+    }>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
 
-  signup: (data: { cnpj: string; email: string; password: string; confirm?: string; name?: string }) =>
-    request<{ success: boolean; token: string; userId: number; email: string; name: string; cnpj?: string; avatarUrl?: string; startupProfileId: number; message?: string }>(
-      "/auth/signup",
-      { method: "POST", body: JSON.stringify(data) }
-    ),
+  signup: (data: {
+    cnpj: string;
+    email: string;
+    password: string;
+    confirm?: string;
+    name?: string;
+    phone?: string;
+    accountType?: "STARTUP" | "COMPANY";
+  }) =>
+    request<{
+      success: boolean;
+      token: string;
+      userId: number;
+      email: string;
+      name: string;
+      cnpj?: string;
+      phone?: string;
+      avatarUrl?: string;
+      startupProfileId?: number;
+      companyId?: number;
+      accountType?: "STARTUP" | "COMPANY";
+      message?: string;
+    }>("/auth/signup", { method: "POST", body: JSON.stringify(data) }),
 
   getUser: (userId: number) =>
-    request<{ success: boolean; userId: number; email: string; name: string; cnpj?: string; avatarUrl?: string; startupProfileId: number }>(`/auth/user/${userId}`),
+    request<{
+      success: boolean;
+      userId: number;
+      email: string;
+      name: string;
+      cnpj?: string;
+      phone?: string;
+      avatarUrl?: string;
+      startupProfileId?: number;
+      companyId?: number;
+      accountType?: "STARTUP" | "COMPANY";
+    }>(`/auth/user/${userId}`),
 
-  updateUser: (userId: number, data: { name?: string; email?: string; cnpj?: string; avatarUrl?: string }) =>
-    request<{ success: boolean; userId: number; email: string; name: string; cnpj?: string; avatarUrl?: string; startupProfileId: number }>(
-      `/auth/user/${userId}`,
-      { method: "PUT", body: JSON.stringify(data) }
-    ),
+  updateUser: (
+    userId: number,
+    data: { name?: string; email?: string; cnpj?: string; phone?: string; avatarUrl?: string; accountType?: "STARTUP" | "COMPANY" }
+  ) =>
+    request<{
+      success: boolean;
+      userId: number;
+      email: string;
+      name: string;
+      cnpj?: string;
+      phone?: string;
+      avatarUrl?: string;
+      startupProfileId?: number;
+      companyId?: number;
+      accountType?: "STARTUP" | "COMPANY";
+    }>(`/auth/user/${userId}`, { method: "PUT", body: JSON.stringify(data) }),
 
   deleteUser: (userId: number) =>
     request<void>(`/auth/user/${userId}`, { method: "DELETE" }),
@@ -200,6 +316,7 @@ export const api = {
     request<void>("/auth/reset-password", { method: "POST", body: JSON.stringify(data) }),
 
   // Startup Profile
+  getAllStartups: () => request<StartupProfileData[]>("/startups"),
   getDefaultProfile: () => request<StartupProfileData>("/startups/default"),
   getProfile: (id: number) => request<StartupProfileData>(`/startups/${id}`),
   getProfileByUser: (userId: number) => request<StartupProfileData>(`/startups/user/${userId}`),
@@ -234,11 +351,26 @@ export const api = {
 
   getOpportunity: (id: string | number) => request<OpportunityItem>(`/opportunities/${id}`),
 
-  createOpportunity: (data: { type: string; title: string; description: string; tags?: string; meta?: string; externalUrl?: string }) =>
+  createOpportunity: (data: {
+    type: string;
+    title: string;
+    description: string;
+    tags?: string;
+    meta?: string;
+    externalUrl?: string;
+    companyId?: number;
+  }) =>
     request<OpportunityItem>("/opportunities", { method: "POST", body: JSON.stringify(data) }),
 
-  createCompany: (data: { name: string; type: string; description: string; tags?: string }) =>
-    request<{ id: number; name: string; type: string; description: string; tags: string }>("/companies", {
+  getCompanies: () => request<CompanyProfileData[]>("/companies"),
+  getDefaultCompany: () => request<CompanyProfileData>("/companies/default"),
+  getCompany: (id: number) => request<CompanyProfileData>(`/companies/${id}`),
+  getCompanyByUser: (userId: number) => request<CompanyProfileData>(`/companies/user/${userId}`),
+  updateCompany: (id: number, data: Partial<CompanyProfileData>) =>
+    request<CompanyProfileData>(`/companies/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  createCompany: (data: Partial<CompanyProfileData>) =>
+    request<CompanyProfileData>("/companies", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -259,11 +391,29 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ startupId, opportunityId }),
     }),
+  unparticipateInOpportunity: (
+    startupId: number | undefined,
+    opportunityId?: string | number,
+    matchId?: number,
+    title?: string
+  ) =>
+    request<{ removed: boolean }>("/matches/unparticipate", {
+      method: "POST",
+      body: JSON.stringify({ startupId, opportunityId, matchId, title }),
+    }),
   updateMatchStatus: (matchId: number, status: string) =>
     request<MatchItem>(`/matches/${matchId}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
+  getCompanyStartupsMatches: (companyId?: number) => {
+    const qs = companyId ? `?companyId=${companyId}` : "";
+    return request<StartupMatchItem[]>(`/matches/company-startups${qs}`);
+  },
+  getStartupCompaniesMatches: (startupId?: number) => {
+    const qs = startupId ? `?startupId=${startupId}` : "";
+    return request<CompanyMatchItem[]>(`/matches/startup-companies${qs}`);
+  },
 
   // Dashboard
   getDashboardSummary: (startupId?: number) => {

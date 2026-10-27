@@ -5,15 +5,32 @@ import {
   Bell,
   Camera,
   Check,
+  Plus,
+  Rocket,
   Shield,
   Target,
   UserRound,
   X,
 } from "@/icons";
-import { BackButton, Field, PageTitle, PrimaryButton } from "@/components/startin/CommonUI";
+import { BackButton, Field, PageTitle, PrimaryButton, TextAreaField } from "@/components/startin/CommonUI";
 import { api, clearSession, getSession, saveSession, type StartupProfileData } from "@/lib/api";
 import type { Screen } from "@/types/startin";
 import { getInitials } from "@/utils/formatters";
+
+const DEFAULT_INTEREST_AREAS = [
+  "IA",
+  "Saúde",
+  "Dados",
+  "Automação",
+  "SaaS B2B",
+  "FinTech",
+  "Cloud",
+  "IoT",
+  "Analytics",
+  "Educação",
+];
+
+const OPPORTUNITY_TYPE_OPTIONS = ["POC", "Compra", "Editais", "Eventos"];
 
 export function SettingsPage({
   go,
@@ -73,7 +90,7 @@ export function SettingsPage({
       "account",
       UserRound,
       "Conta e acesso",
-      "E-mail, foto de perfil, senha e informações básicas da sua conta.",
+      "Foto, dados da sua startup, credenciais e preferências de matching.",
     ],
     [
       "preferences",
@@ -124,7 +141,7 @@ export function SettingsPage({
             onClick={() => go(screen)}
             className="group rounded-2xl border border-[#e2e7eb] bg-white p-6 text-left hover:border-[#b8cad8]"
           >
-            <Icon className="text-[#075394]" size={20} />
+            <Icon className="text-[#111827]" size={20} />
             <div className="mt-5 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-extrabold text-[#123b62]">{title}</h2>
@@ -161,7 +178,7 @@ export function SettingsPage({
               <div className="flex items-center gap-2.5">
                 <span
                   className={`text-[11px] font-bold ${
-                    isActive ? "text-[#075394]" : "text-[#8e9aa4]"
+                    isActive ? "text-[#111827]" : "text-[#8e9aa4]"
                   }`}
                 >
                   {isActive ? "Ativo" : "Inativo"}
@@ -172,7 +189,7 @@ export function SettingsPage({
                   aria-checked={isActive}
                   onClick={() => handleToggleQuickPref(i)}
                   className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors ${
-                    isActive ? "bg-[#075394]" : "bg-[#b8c4cc]"
+                    isActive ? "bg-[#111827]" : "bg-[#b8c4cc]"
                   }`}
                 >
                   <div
@@ -255,7 +272,7 @@ export function SubSettings({
   const titles: Record<string, [string, string]> = {
     account: [
       "Conta e acesso",
-      "Gerencie seus dados de acesso, foto de perfil e informações básicas da sua conta.",
+      "Gerencie os dados da sua startup, foto de perfil, credenciais de acesso e preferências de matching da IA.",
     ],
     privacy: [
       "Privacidade e segurança",
@@ -289,11 +306,34 @@ export function SubSettings({
   const [accEmail, setAccEmail] = useState(
     session?.email || profile?.userEmail || "admin@startin.com"
   );
+  const [accPhone, setAccPhone] = useState(session?.phone || profile?.phone || "");
   const [avatarUrl, setAvatarUrl] = useState(
     profile?.avatarUrl || session?.avatarUrl || ""
   );
   const [accountSavedMsg, setAccountSavedMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Estados integrados da Startup e Preferências de Matching
+  const [startupName, setStartupName] = useState(profile?.name || "Nexa Health");
+  const [startupDescription, setStartupDescription] = useState(profile?.description || "");
+  const [receiveRecs, setReceiveRecs] = useState(profile?.receiveAiRecommendations ?? true);
+  const [customAreaInput, setCustomAreaInput] = useState("");
+  const [selectedOppTypes, setSelectedOppTypes] = useState<string[]>(() => {
+    const raw = profile?.opportunityTypes || "POC, Compra, Editais";
+    const parsed = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return parsed.length > 0 ? parsed : ["POC", "Compra", "Editais"];
+  });
+  const [selectedAreas, setSelectedAreas] = useState<string[]>(() => {
+    const raw = profile?.areasOfInterest || profile?.technologies || "IA, Saúde, Dados, Automação";
+    const parsed = raw
+      .split(/[,•]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return parsed.length > 0 ? parsed : ["IA", "Saúde", "Dados", "Automação"];
+  });
 
   // Estado dos critérios de Preferências de Matching
   const [prefType, setPrefType] = useState(() => {
@@ -322,7 +362,25 @@ export function SubSettings({
 
   useEffect(() => {
     if (profile) {
-      if (profile.opportunityTypes) setPrefType(profile.opportunityTypes);
+      if (profile.name) setStartupName(profile.name);
+      if (profile.description) setStartupDescription(profile.description);
+      setReceiveRecs(profile.receiveAiRecommendations ?? true);
+      if (profile.opportunityTypes) {
+        setPrefType(profile.opportunityTypes);
+        const parsed = profile.opportunityTypes
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (parsed.length > 0) setSelectedOppTypes(parsed);
+      }
+      const rawAreas = profile.areasOfInterest || profile.technologies;
+      if (rawAreas) {
+        const parsed = rawAreas
+          .split(/[,•]/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (parsed.length > 0) setSelectedAreas(parsed);
+      }
       if (profile.mainSector || profile.mainArea)
         setMainSector(profile.mainSector || profile.mainArea);
       if (profile.technologies) setTechnologies(profile.technologies);
@@ -333,6 +391,29 @@ export function SubSettings({
       if (profile.avatarUrl) setAvatarUrl(profile.avatarUrl);
     }
   }, [profile]);
+
+  const toggleOppType = (t: string) => {
+    setSelectedOppTypes((prev) =>
+      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
+    );
+  };
+
+  const toggleArea = (area: string) => {
+    setSelectedAreas((prev) =>
+      prev.includes(area) ? prev.filter((x) => x !== area) : [...prev, area]
+    );
+  };
+
+  const handleAddCustomArea = () => {
+    const clean = customAreaInput.trim();
+    if (!clean) return;
+    if (!selectedAreas.includes(clean)) {
+      setSelectedAreas((prev) => [...prev, clean]);
+    }
+    setCustomAreaInput("");
+  };
+
+  const allAvailableAreas = Array.from(new Set([...DEFAULT_INTEREST_AREAS, ...selectedAreas]));
 
   useEffect(() => {
     if (screen === "notifications") {
@@ -347,6 +428,7 @@ export function SubSettings({
         .then((u) => {
           if (u.name) setAccName(u.name);
           if (u.email) setAccEmail(u.email);
+          if (u.phone) setAccPhone(u.phone);
           if (u.avatarUrl) setAvatarUrl(u.avatarUrl);
         })
         .catch(() => {});
@@ -385,21 +467,32 @@ export function SubSettings({
         const updated = await api.updateUser(session.userId, {
           name: accName,
           email: accEmail,
+          phone: accPhone,
           avatarUrl: avatarUrl || undefined,
         });
         saveSession({
           ...session,
           name: updated.name,
           email: updated.email,
+          phone: updated.phone || accPhone,
           avatarUrl: updated.avatarUrl || avatarUrl,
         });
       }
       const targetId = profile?.id || startupId || session?.startupProfileId || 1;
-      if (avatarUrl) {
-        const updatedProfile = await api.updatePreferences(targetId, { avatarUrl });
-        onProfileUpdated(updatedProfile);
-      }
-      setAccountSavedMsg("Informações da conta salvas com sucesso!");
+      const updatedProfile = await api.updatePreferences(targetId, {
+        name: startupName,
+        phone: accPhone,
+        avatarUrl: avatarUrl || undefined,
+        opportunityTypes: selectedOppTypes.join(", "),
+        areasOfInterest: selectedAreas.join(", "),
+        technologies: selectedAreas.join(", "),
+        mainArea: mainSector,
+        location: operationRegion,
+        description: startupDescription,
+        receiveAiRecommendations: receiveRecs,
+      });
+      onProfileUpdated(updatedProfile);
+      setAccountSavedMsg("Dados da conta e da startup salvos com sucesso!");
       setTimeout(() => setAccountSavedMsg(""), 3500);
     } catch {
       setAccountSavedMsg("Informações salvas localmente.");
@@ -473,10 +566,10 @@ export function SubSettings({
             <button
               key={x}
               onClick={() => setNotifFilter(x)}
-              className={`rounded-full px-4 py-2 text-xs font-bold ${
+              className={`rounded-full px-4 py-2 text-xs font-bold transition ${
                 notifFilter === x
-                  ? "bg-[#075394] text-white"
-                  : "bg-white text-[#46627c] ring-1 ring-[#e3e8ec]"
+                  ? "bg-[#111827] text-white"
+                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
               }`}
             >
               {x}
@@ -492,7 +585,7 @@ export function SubSettings({
               key={`${a}-${idx}`}
               className="flex gap-4 rounded-2xl border border-[#e2e7eb] bg-white p-5"
             >
-              <div className="mt-1 h-9 w-9 shrink-0 rounded-full bg-[#eaf2f8]" />
+              <div className="mt-1 h-9 w-9 shrink-0 rounded-full bg-gray-100" />
               <div>
                 <p className="text-sm font-extrabold text-[#244766]">{a}</p>
                 <p className="mt-1 text-xs text-[#70808c]">{b}</p>
@@ -508,7 +601,17 @@ export function SubSettings({
   return (
     <>
       <BackButton label="Voltar para configurações" onClick={() => go("settings")} />
-      <PageTitle title={title} description={description} />
+      <PageTitle
+        title={title}
+        description={description}
+        action={
+          screen === "account" ? (
+            <PrimaryButton secondary onClick={() => go("onboarding")}>
+              Editar perfil completo da startup
+            </PrimaryButton>
+          ) : undefined
+        }
+      />
       <section className="mt-8 rounded-2xl border border-[#e2e7eb] bg-white p-6 md:p-8">
         {screen === "account" && (
           <>
@@ -521,6 +624,30 @@ export function SubSettings({
               </div>
             )}
 
+            {/* Resumo da Startup Vinculada e Atalho Onboarding */}
+            <div className="mb-7 flex flex-col justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 p-5 sm:flex-row sm:items-center">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
+                  Startup Vinculada à Conta
+                </span>
+                <h3 className="text-base font-extrabold text-[#111827]">
+                  {startupName || "Nexa Health"}
+                </h3>
+                <p className="mt-0.5 text-xs text-gray-600">
+                  {[mainSector, profile?.businessModel, operationRegion].filter(Boolean).join(" · ") ||
+                    "Healthtech · SaaS B2B · Recife, PE"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => go("onboarding")}
+                className="inline-flex items-center gap-1.5 self-start rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-bold text-[#111827] shadow-xs transition hover:bg-gray-100 sm:self-auto"
+              >
+                Revisar etapas completas <ArrowRight size={13} />
+              </button>
+            </div>
+
+            {/* Foto de Perfil */}
             <div className="mb-7 flex flex-col justify-between gap-4 border-b border-[#edf0f2] pb-7 sm:flex-row sm:items-center">
               <div className="flex items-center gap-4">
                 <div className="relative">
@@ -528,17 +655,18 @@ export function SubSettings({
                     <img
                       src={avatarUrl}
                       alt={accName}
-                      className="h-16 w-16 rounded-full border-2 border-[#075394] object-cover"
+                      className="h-16 w-16 rounded-full border-2 border-[#111827] object-cover"
                     />
                   ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#062f61] text-lg font-extrabold text-white">
-                      {getInitials(accName || profile?.name || "StartIn")}
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#111827] text-lg font-extrabold text-white">
+                      {getInitials(accName || startupName || "StartIn")}
                     </div>
                   )}
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#075394] text-white shadow"
+                    title="Alterar foto de perfil"
+                    className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#111827] text-[#FEC908] shadow hover:bg-black transition"
                   >
                     <Camera size={13} />
                   </button>
@@ -551,43 +679,189 @@ export function SubSettings({
                   />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-[#123b62]">Foto de perfil</h3>
+                  <h3 className="text-sm font-extrabold text-[#111827]">Foto de perfil</h3>
                   <p className="mt-1 text-xs text-[#768692]">
-                    Exibida na barra superior e no perfil da sua startup.
+                    Exibida na barra superior, no menu e no perfil público da sua startup.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-2 self-start rounded-xl border border-[#d6e0e7] bg-[#f8fafc] px-4 py-2.5 text-xs font-bold text-[#075394] transition hover:bg-[#eaf2f8] sm:self-auto"
+                className="inline-flex items-center gap-2 self-start rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-bold text-[#111827] transition hover:bg-gray-100 sm:self-auto"
               >
                 <Camera size={14} />
                 {avatarUrl ? "Alterar foto" : "Adicionar foto"}
               </button>
             </div>
 
-            <h2 className="text-base font-extrabold text-[#123b62]">Informações da conta</h2>
+            {/* Informações da Conta e da Startup */}
+            <h2 className="text-base font-extrabold text-[#111827]">Informações da Conta e Startup</h2>
             <div className="mt-6 grid gap-5 md:grid-cols-2">
-              <Field label="Nome completo" value={accName} onChange={setAccName} />
-              <Field label="E-mail" value={accEmail} onChange={setAccEmail} />
+              <Field label="Nome do responsável" value={accName} onChange={setAccName} />
+              <Field label="Nome da startup" value={startupName} onChange={setStartupName} />
+              <Field label="E-mail de acesso" value={accEmail} onChange={setAccEmail} />
+              <Field
+                label="Telefone / WhatsApp"
+                placeholder="(00) 00000-0000"
+                value={accPhone}
+                onChange={setAccPhone}
+              />
+              <Field
+                label="Setor principal"
+                placeholder="Healthtech, Fintech, Agtech..."
+                value={mainSector}
+                onChange={setMainSector}
+              />
+              <Field
+                label="Localização"
+                placeholder="Recife, PE"
+                value={operationRegion}
+                onChange={setOperationRegion}
+              />
+              <div className="md:col-span-2">
+                <TextAreaField
+                  label="Descrição curta da startup"
+                  placeholder="Resumo do que a startup desenvolve e seus diferenciais."
+                  value={startupDescription}
+                  onChange={setStartupDescription}
+                />
+              </div>
             </div>
-            <div className="mt-5">
+
+            {/* Preferências de Matching da IA (Unificadas da antiga Minha Startup) */}
+            <div className="mt-9 border-t border-[#edf0f2] pt-8">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                <div>
+                  <h2 className="text-base font-extrabold text-[#111827]">
+                    Preferências de Matching da IA
+                  </h2>
+                  <p className="mt-1 text-xs text-[#7d8a95]">
+                    Defina as áreas de interesse e os tipos de oportunidade que a IA prioriza na aba <strong>Para você</strong>.
+                  </p>
+                </div>
+                <span className="text-[11px] font-semibold text-[#111827]">
+                  {selectedAreas.length} áreas · {selectedOppTypes.length} tipos ativos
+                </span>
+              </div>
+
+              <div className="mt-6 grid gap-7 md:grid-cols-2">
+                <div>
+                  <p className="text-xs font-bold text-[#50697f]">
+                    Áreas de interesse (clique para ativar/desativar)
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {allAvailableAreas.map((area) => {
+                      const isSelected = selectedAreas.includes(area);
+                      return (
+                        <button
+                          key={area}
+                          type="button"
+                          onClick={() => toggleArea(area)}
+                          className={`rounded-full px-4 py-2 text-xs font-bold transition ${
+                            isSelected
+                              ? "bg-[#111827] text-white font-bold shadow-sm"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {area}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={customAreaInput}
+                      onChange={(e) => setCustomAreaInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomArea())}
+                      placeholder="Adicionar nova área (ex: Biotecnologia)..."
+                      className="h-9 flex-1 rounded-lg border border-[#d9e1e7] bg-[#f9fbfc] px-3 text-xs outline-none focus:border-[#111827]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCustomArea}
+                      className="inline-flex h-9 items-center gap-1 rounded-lg bg-[#111827] px-3 text-xs font-bold text-white hover:bg-black transition"
+                    >
+                      <Plus size={13} /> Adicionar
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold text-[#50697f]">
+                    Tipos de oportunidade de interesse
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {OPPORTUNITY_TYPE_OPTIONS.map((x) => {
+                      const active = selectedOppTypes.includes(x);
+                      return (
+                        <button
+                          key={x}
+                          type="button"
+                          onClick={() => toggleOppType(x)}
+                          className={`rounded-full px-4 py-2 text-xs font-bold transition ${
+                            active
+                              ? "bg-[#111827] text-white font-bold shadow-sm"
+                              : "bg-[#f3f5f6] text-[#557086] hover:bg-[#e5ebef]"
+                          }`}
+                        >
+                          {x}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-3 text-[11px] leading-4 text-[#83919c]">
+                    A aba <strong>Para você</strong> filtra automaticamente as oportunidades de acordo com os tipos e áreas selecionados acima.
+                  </p>
+                </div>
+              </div>
+
+              {/* Switch de recomendações da IA */}
+              <div className="mt-8 flex items-center justify-between border-t border-[#edf0f2] pt-6">
+                <div>
+                  <p className="text-sm font-bold text-[#284a67]">Receber recomendações da IA</p>
+                  <p className="mt-1 text-xs text-[#82909a]">
+                    Use seu perfil para personalizar novas oportunidades diariamente às 08h.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReceiveRecs(!receiveRecs)}
+                  className={`flex h-7 w-12 items-center rounded-full p-1 transition-colors ${
+                    receiveRecs ? "bg-[#111827]" : "bg-[#b8c4cc]"
+                  }`}
+                >
+                  <span
+                    className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      receiveRecs ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Botão de Salvar Unificado */}
+            <div className="mt-8">
               <PrimaryButton onClick={handleSaveAccount}>
-                Salvar informações <Check size={15} />
+                Salvar dados da conta e da startup <Check size={15} />
               </PrimaryButton>
             </div>
-            <div className="mt-8 border-t border-[#edf0f2] pt-7">
-              <h2 className="text-base font-extrabold text-[#123b62]">Segurança</h2>
-              <p className="mt-4 mb-3 text-xs text-[#768692]">Senha · ••••••••••••</p>
+
+            {/* Segurança */}
+            <div className="mt-9 border-t border-[#edf0f2] pt-7">
+              <h2 className="text-base font-extrabold text-[#111827]">Segurança</h2>
+              <p className="mt-4 mb-3 text-xs text-[#768692]">Senha de acesso · ••••••••••••</p>
               <PrimaryButton secondary onClick={() => go("reset")}>
                 Alterar senha
               </PrimaryButton>
             </div>
+
+            {/* Excluir Conta */}
             <div className="mt-8 border-t border-[#edf0f2] pt-7">
-              <h2 className="text-base font-extrabold text-[#123b62]">Excluir conta</h2>
+              <h2 className="text-base font-extrabold text-[#111827]">Excluir conta</h2>
               <p className="mt-3 text-xs text-[#768692]">
-                Essa ação remove permanentemente os dados desta conta.
+                Essa ação remove permanentemente os dados desta conta e do perfil associado.
               </p>
               <button
                 onClick={handleDeleteAccount}
@@ -620,7 +894,7 @@ export function SubSettings({
                   <div className="flex items-center gap-2.5">
                     <span
                       className={`text-[11px] font-bold ${
-                        active ? "text-[#075394]" : "text-[#8e9aa4]"
+                        active ? "text-[#111827]" : "text-[#8e9aa4]"
                       }`}
                     >
                       {active ? "Ativo" : "Inativo"}
@@ -631,7 +905,7 @@ export function SubSettings({
                         setPrivacyToggles((prev) => prev.map((v, idx) => (idx === i ? !v : v)))
                       }
                       className={`flex h-7 w-12 items-center rounded-full p-1 transition-colors ${
-                        active ? "bg-[#075394]" : "bg-[#b8c4cc]"
+                        active ? "bg-[#111827]" : "bg-[#b8c4cc]"
                       }`}
                     >
                       <div
@@ -649,7 +923,7 @@ export function SubSettings({
             <button
               type="button"
               onClick={() => go("login")}
-              className="mt-4 text-xs font-bold text-[#075394] hover:underline"
+              className="mt-4 text-xs font-bold text-[#111827] hover:underline"
             >
               Encerrar outras sessões
             </button>
@@ -686,7 +960,7 @@ export function SubSettings({
                   onClick={() => setPrefType(opt.value)}
                   className={`rounded-lg px-5 py-3 text-xs font-bold transition ${
                     prefType.toLowerCase() === opt.value.toLowerCase()
-                      ? "bg-[#075394] text-white shadow-sm"
+                      ? "bg-[#111827] text-white shadow-sm"
                       : "bg-[#f3f6f8] text-[#486680] hover:bg-[#e6edf2]"
                   }`}
                 >
@@ -707,7 +981,7 @@ export function SubSettings({
                 <select
                   value={mainSector}
                   onChange={(e) => setMainSector(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#075394]"
+                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#111827]"
                 >
                   {Array.from(new Set([mainSector, ...SECTOR_OPTIONS])).filter(Boolean).map((opt) => (
                     <option key={opt} value={opt}>
@@ -722,7 +996,7 @@ export function SubSettings({
                 <select
                   value={technologies}
                   onChange={(e) => setTechnologies(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#075394]"
+                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#111827]"
                 >
                   {Array.from(new Set([technologies, ...TECH_OPTIONS])).filter(Boolean).map((opt) => (
                     <option key={opt} value={opt}>
@@ -737,7 +1011,7 @@ export function SubSettings({
                 <select
                   value={operationRegion}
                   onChange={(e) => setOperationRegion(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#075394]"
+                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#111827]"
                 >
                   {Array.from(new Set([operationRegion, ...LOCATION_OPTIONS])).filter(Boolean).map((opt) => (
                     <option key={opt} value={opt}>
@@ -752,7 +1026,7 @@ export function SubSettings({
                 <select
                   value={currentStage}
                   onChange={(e) => setCurrentStage(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#075394]"
+                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#111827]"
                 >
                   {Array.from(new Set([currentStage, ...STAGE_OPTIONS])).filter(Boolean).map((opt) => (
                     <option key={opt} value={opt}>
@@ -767,7 +1041,7 @@ export function SubSettings({
                 <select
                   value={investmentNeed}
                   onChange={(e) => setInvestmentNeed(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#075394]"
+                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#111827]"
                 >
                   {Array.from(new Set([investmentNeed, ...INVESTMENT_OPTIONS])).filter(Boolean).map((opt) => (
                     <option key={opt} value={opt}>

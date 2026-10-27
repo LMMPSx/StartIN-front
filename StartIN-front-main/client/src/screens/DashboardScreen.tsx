@@ -75,21 +75,21 @@ export function Dashboard({
           </PrimaryButton>
         }
       />
-      <div className="mt-8 rounded-2xl bg-[#075394] p-6 text-white md:p-7">
+      <div className="mt-8 rounded-2xl bg-[#111827] p-6 text-white md:p-7">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold text-[#c4d8eb]">
+            <p className="text-xs font-semibold text-gray-300">
               Você tem {pendingCount} ações para acompanhar
             </p>
             <h2 className="mt-2 text-[20px] font-extrabold tracking-[-.03em]">{pendingText}</h2>
           </div>
-          <Zap className="hidden text-[#ffd43b] md:block" size={30} fill="currentColor" />
+          <Zap className="hidden text-[#FEC908] md:block" size={30} fill="currentColor" />
         </div>
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map(([n, l]) => (
           <div key={l} className="rounded-xl border border-[#e5eaee] bg-white p-5">
-            <div className="text-[27px] font-extrabold tracking-[-.05em] text-[#062f61]">{n}</div>
+            <div className="text-[27px] font-extrabold tracking-[-.05em] text-[#111827]">{n}</div>
             <div className="mt-1 text-xs text-[#7d8993]">{l}</div>
           </div>
         ))}
@@ -97,8 +97,8 @@ export function Dashboard({
       <div className="mt-8 grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
         <section className="rounded-2xl border border-[#e5eaee] bg-white p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-extrabold text-[#062f61]">Próximos prazos</h2>
-            <button onClick={() => go("for-you")} className="text-xs font-bold text-[#075394]">
+            <h2 className="text-base font-extrabold text-[#111827]">Próximos prazos</h2>
+            <button onClick={() => go("for-you")} className="text-xs font-bold text-[#111827] hover:underline">
               Ver todos
             </button>
           </div>
@@ -124,15 +124,15 @@ export function Dashboard({
             ))}
           </div>
         </section>
-        <section className="rounded-2xl bg-[#eaf2f8] p-6">
-          <div className="flex items-center gap-2 text-[#075394]">
+        <section className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
+          <div className="flex items-center gap-2 text-[#111827]">
             <TrendingUp size={17} />
             <h2 className="text-base font-extrabold">Atividade recente</h2>
           </div>
           <div className="mt-5 space-y-5">
             {activities.map((act, i) => (
-              <div key={i} className="flex gap-3 border-b border-[#d6e4ee] pb-4 last:border-0">
-                <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#ffd43b]" />
+              <div key={i} className="flex gap-3 border-b border-gray-200 pb-4 last:border-0">
+                <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#FEC908]" />
                 <div>
                   <p className="text-xs font-semibold text-[#2a4b6a]">{act.text}</p>
                   <p className="mt-1 text-[10px] text-[#8193a1]">{act.time}</p>
