@@ -2,10 +2,8 @@ import {
   Bookmark,
   Bot,
   Building2,
-  Compass,
   FilePlus2,
   FileText,
-  Heart,
   HomeIcon,
   Rocket,
   Sparkles,
@@ -42,13 +40,21 @@ export type Screen =
   | "match"
   | "create-company"
   | "create-opportunity"
+  | "edit-opportunity"
+  | "company-matches-history"
   | "interest-success"
   | "opportunity-success";
 
-export type OpportunityType = "Todos" | "Editais" | "Eventos" | "POCs" | "Compras";
+export type OpportunityType =
+  | "Todos"
+  | "Editais"
+  | "Eventos"
+  | "POCs"
+  | "Primeira Compra"
+  | "Compras";
 
 export const NAV_ITEMS_STARTUP = [
-  { id: "dashboard", label: "Dashboard", icon: HomeIcon },
+  { id: "dashboard", label: "Home", icon: HomeIcon },
   { id: "for-you", label: "Para você", icon: Sparkles },
   { id: "search-companies", label: "Buscar empresas", icon: Building2 },
   { id: "saved-opportunities", label: "Salvos", icon: Bookmark },
@@ -56,10 +62,10 @@ export const NAV_ITEMS_STARTUP = [
 ] as const;
 
 export const NAV_ITEMS_COMPANY = [
+  { id: "dashboard", label: "Home", icon: HomeIcon },
   { id: "search-startups", label: "Buscar startups", icon: Rocket },
   { id: "my-opportunities", label: "Lançar oportunidades", icon: FileText },
   { id: "create-opportunity", label: "Nova POC / Compra", icon: FilePlus2 },
-  { id: "assistant", label: "Assistente IA", icon: Bot },
 ] as const;
 
 export const NAV_ITEMS = NAV_ITEMS_STARTUP;

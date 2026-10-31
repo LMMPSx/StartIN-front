@@ -43,7 +43,7 @@ export function Login({
       });
       localStorage.setItem("startin-auth", "1");
       onAuthSuccess();
-      go(accountType === "COMPANY" ? "search-startups" : "dashboard");
+      go("dashboard");
     } catch (err: any) {
       setError(err.message || "Não foi possível entrar. Verifique suas credenciais.");
     } finally {
@@ -213,7 +213,9 @@ export function Signup({
                   : "text-gray-600 hover:bg-white/70"
               }`}
             >
-              <Rocket size={15} />
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white p-0.5">
+                <Rocket size={13} />
+              </span>
               Startup
             </button>
             <button
@@ -313,7 +315,7 @@ export function Recovery({
     <AuthShell
       sideTitle={
         <>
-          Não se preocupe, vamos ajudar <span className="text-[#ffd43b]">você.</span>
+          Não se preocupe, vamos ajudar <span className="text-[#FEC908]">você.</span>
         </>
       }
       sideText="Informe o e-mail cadastrado e enviaremos as instruções para redefinir sua senha."
@@ -419,6 +421,7 @@ export function Reset({
 
 export function Verify({ go }: { go: (s: Screen) => void }) {
   const session = getSession();
+  const isCompany = session?.accountType === "COMPANY";
   return (
     <AuthShell
       sideTitle={
@@ -426,7 +429,9 @@ export function Verify({ go }: { go: (s: Screen) => void }) {
           Confirme seu e-mail para <span className="text-[#FEC908]">continuar.</span>
         </>
       }
-      sideText="Enviamos um link de confirmação para validar sua conta antes de configurar sua startup."
+      sideText={`Enviamos um link de confirmação para validar sua conta antes de configurar ${
+        isCompany ? "sua empresa" : "sua startup"
+      }.`}
     >
       <button
         type="button"

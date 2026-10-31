@@ -39,6 +39,7 @@ export function Matches({
   const handleToggleSaveFromList = async (m: MatchItem) => {
     const isCurrentlySaved = m.status === "SALVO" || m.status === "INTERESSE_ENVIADO";
     const nextStatus = isCurrentlySaved ? "NOVO" : "SALVO";
+    const targetStartupId = m.startupId || startupId;
 
     // Atualiza estado local imediatamente
     setMatchesList((prev) =>
@@ -50,29 +51,32 @@ export function Matches({
     );
 
     if (isCurrentlySaved) {
-      removeOpportunityLocally(m.opportunityId || m.id);
-      removeOpportunityLocally(m.opportunityTitle);
+      removeOpportunityLocally(m.opportunityId || m.id, targetStartupId);
+      removeOpportunityLocally(m.opportunityTitle, targetStartupId);
       try {
         await api.unparticipateInOpportunity(
-          m.startupId || startupId,
+          targetStartupId,
           m.opportunityId,
           m.id,
           m.opportunityTitle
         );
       } catch {}
     } else {
-      saveOpportunityLocally({
-        id: m.opportunityId || m.id,
-        code: m.opportunityCode,
-        type: formatOppType(m.opportunityType),
-        title: m.opportunityTitle,
-        short: m.opportunityShort || m.justification,
-        description: m.opportunityDescription || m.justification,
-        match: m.matchScore || 92,
-        meta: m.opportunityMeta || "Inscrições abertas · Brasil",
-        tags: m.opportunityTags || "IA • Dados • Inovação",
-        externalUrl: m.opportunityExternalUrl,
-      });
+      saveOpportunityLocally(
+        {
+          id: m.opportunityId || m.id,
+          code: m.opportunityCode,
+          type: formatOppType(m.opportunityType),
+          title: m.opportunityTitle,
+          short: m.opportunityShort || m.justification,
+          description: m.opportunityDescription || m.justification,
+          match: m.matchScore ?? 0,
+          meta: m.opportunityMeta || "Inscrições abertas · Brasil",
+          tags: m.opportunityTags || "IA • Dados • Inovação",
+          externalUrl: m.opportunityExternalUrl,
+        },
+        targetStartupId
+      );
       if (m.id) {
         try {
           await api.updateMatchStatus(m.id, "SALVO");
@@ -83,8 +87,8 @@ export function Matches({
   };
 
   const avgScore = matchesList.length
-    ? Math.round(matchesList.reduce((acc, m) => acc + (m.matchScore || 0), 0) / matchesList.length)
-    : 92;
+    ? Math.round(matchesList.reduce((acc, m) => acc + (m.matchScore ?? 0), 0) / matchesList.length)
+    : 0;
 
   const interesseCount = matchesList.filter(
     (m) => m.status === "INTERESSE_ENVIADO" || m.status === "SALVO"
@@ -94,7 +98,7 @@ export function Matches({
 
   return (
     <>
-      <BackButton label="Voltar para Dashboard" onClick={() => go("dashboard")} />
+      <BackButton label="Voltar para Home" onClick={() => go("dashboard")} />
       <PageTitle
         title="Seus matches"
         description="Conexões com maior potencial para sua startup."
@@ -198,21 +202,25 @@ export function Matches({
 
 export function MatchDetail({
   go,
+  startupId,
   selectedMatch,
   onOpenOpportunity,
   onSavedChange,
 }: {
   go: (s: Screen) => void;
+  startupId?: number;
   selectedMatch: MatchItem | null;
   onOpenOpportunity: (oppId: number | string) => void;
   onSavedChange?: () => void;
 }) {
+  const targetStartupId = selectedMatch?.startupId || startupId;
+
   const [saved, setSaved] = useState(() => {
     if (!selectedMatch) return false;
     if (selectedMatch.status === "SALVO" || selectedMatch.status === "INTERESSE_ENVIADO") {
       return true;
     }
-    return getLocalSavedOpportunities().some(
+    return getLocalSavedOpportunities(targetStartupId).some(
       (x) =>
         String(x.id) === String(selectedMatch.opportunityId) ||
         x.title.toLowerCase() === (selectedMatch.opportunityTitle || "").toLowerCase()
@@ -223,13 +231,13 @@ export function MatchDetail({
     if (!selectedMatch) return;
     const isSavedInMatch =
       selectedMatch.status === "SALVO" || selectedMatch.status === "INTERESSE_ENVIADO";
-    const isSavedLocally = getLocalSavedOpportunities().some(
+    const isSavedLocally = getLocalSavedOpportunities(targetStartupId).some(
       (x) =>
         String(x.id) === String(selectedMatch.opportunityId) ||
         x.title.toLowerCase() === (selectedMatch.opportunityTitle || "").toLowerCase()
     );
     setSaved(isSavedInMatch || isSavedLocally);
-  }, [selectedMatch]);
+  }, [selectedMatch, targetStartupId]);
 
   const title = selectedMatch
     ? `${selectedMatch.startupName} × ${selectedMatch.opportunityTitle}`
@@ -270,18 +278,21 @@ export function MatchDetail({
     const newStatus = saved ? "NOVO" : "SALVO";
     if (!saved && selectedMatch) {
       selectedMatch.status = "SALVO";
-      saveOpportunityLocally({
-        id: selectedMatch.opportunityId || selectedMatch.id,
-        code: selectedMatch.opportunityCode,
-        type: formatOppType(selectedMatch.opportunityType),
-        title: selectedMatch.opportunityTitle,
-        short: selectedMatch.opportunityShort || selectedMatch.justification,
-        description: selectedMatch.opportunityDescription || selectedMatch.justification,
-        match: selectedMatch.matchScore || 92,
-        meta: selectedMatch.opportunityMeta || "Inscrições abertas · Brasil",
-        tags: selectedMatch.opportunityTags || "IA • Dados • Inovação",
-        externalUrl: selectedMatch.opportunityExternalUrl,
-      });
+      saveOpportunityLocally(
+        {
+          id: selectedMatch.opportunityId || selectedMatch.id,
+          code: selectedMatch.opportunityCode,
+          type: formatOppType(selectedMatch.opportunityType),
+          title: selectedMatch.opportunityTitle,
+          short: selectedMatch.opportunityShort || selectedMatch.justification,
+          description: selectedMatch.opportunityDescription || selectedMatch.justification,
+          match: selectedMatch.matchScore || 92,
+          meta: selectedMatch.opportunityMeta || "Inscrições abertas · Brasil",
+          tags: selectedMatch.opportunityTags || "IA • Dados • Inovação",
+          externalUrl: selectedMatch.opportunityExternalUrl,
+        },
+        targetStartupId
+      );
       if (selectedMatch.id) {
         try {
           await api.updateMatchStatus(selectedMatch.id, newStatus);
@@ -289,11 +300,11 @@ export function MatchDetail({
       }
     } else if (saved && selectedMatch) {
       selectedMatch.status = "NOVO";
-      removeOpportunityLocally(selectedMatch.opportunityId || selectedMatch.id);
-      removeOpportunityLocally(selectedMatch.opportunityTitle);
+      removeOpportunityLocally(selectedMatch.opportunityId || selectedMatch.id, targetStartupId);
+      removeOpportunityLocally(selectedMatch.opportunityTitle, targetStartupId);
       try {
         await api.unparticipateInOpportunity(
-          selectedMatch.startupId,
+          targetStartupId,
           selectedMatch.opportunityId,
           selectedMatch.id,
           selectedMatch.opportunityTitle

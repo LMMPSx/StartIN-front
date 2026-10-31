@@ -64,16 +64,19 @@ StartIN-front-main/
 Logo no primeiro passo do cadastro (`AuthScreen`), o usuário escolhe o seu perfil:
 
 ### 1. Fluxo Startup
-- **"Para você"**: Oportunidades personalizadas com percentual de aderência (0 a 100%) calculado pelo modelo de IA, destacando os 4 pilares: *Perfil da Solução*, *Requisitos do Edital*, *Objetivo Estratégico* e *Contexto de Mercado*.
-- **Editais Raspados**: Acesso aos editais reais da FAPESP, FINEP e InovaStartups raspados diariamente com links diretos para PDFs e regulamentos oficiais.
-- **Salvar Matches**: Funcionalidade persistente para salvar ou remover oportunidades com sincronização no banco de dados.
-- **Busca de Empresas**: Busca pública em estilo Instagram: exibe foto da empresa, nome, 3 tags em miniatura e, ao abrir, exibe resumo de atuação e contatos diretos (incluindo telefone).
-- **Conta e Acesso Unificada**: Configurações da conta, dados de login e todos os dados da startup consolidados em um único local intuitivo.
+- **Onboarding Enxuto em 3 Etapas + IA**:
+  1. **Identidade**: Seletor de área tecnológica principal (com opção `Outro`), localização e site (dados do cadastro inicial como Nome, Telefone e CNPJ ficam editáveis exclusivamente em `Conta e acesso`, sem campo de descrição curta).
+  2. **Solução**: Campo único de *Problema que resolve* com estruturação obrigatória via botão **`Melhorar texto com IA`**, extraindo automaticamente tecnologias, modelo de negócio e tags de matchmaking.
+  3. **Momento (`Validação` vs `Tração`)**: Startups em **Validação** finalizam imediatamente e visualizam `POCs`, `Primeira Compra`, `Editais` e `Eventos`; startups em **Tração** respondem à pesquisa de maturidade **TRL da NASA (1–9)** e anexam o **Atestado de Capacidade Técnica (PDF)** lido pela IA, visualizando `Compras Corporativas` diretas (sem POCs), `Editais` e `Eventos`.
+- **Dashboard Otimizado**: Exibe `Oportunidades encontradas` (soma acumulada histórica), `Empresas com match`, `Matches novos` (delta da última atualização da IA) e `Em acompanhamento`.
+- **"Para você" & Detalhes da Oportunidade**: Filtragem automática pelo estágio da startup (sem botão manual de filtros) e card direto da **Empresa Ofertante** nas oportunidades de `POC`, `Primeira Compra` e `Compra`.
+- **Busca de Empresas**: Exibe no perfil de cada empresa todas as oportunidades (`POC`, `Primeira Compra`, `Compra`) lançadas por ela.
+- **Salvos & Assistente IA Gerador de Templates**: Botão direto em oportunidades salvas para abrir o chat da IA com a oportunidade pré-selecionada, suporte a upload de documentos (PDF/DOCX/TXT) e geração de templates e propostas persuasivas.
 
 ### 2. Fluxo Empresa
-- **Lançamento de Oportunidades**: Interface exclusiva para cadastrar e publicar novas oportunidades corporativas (POCs, Compra Direta ou POC + Compra).
-- **Busca de Startups com IA**: Painel de busca com cards em estilo Instagram exibindo startups cadastradas, com cálculo de compatibilidade por inteligência artificial com base na necessidade da empresa.
-- **Ambiente Limpo**: Não exibe editais públicos de fomento (destinados a startups), focando estritamente em inovação aberta e contratações.
+- **Dashboard Corporativo**: Exibe os 2 indicadores principais (`Startups que deram match` e `POCs / Compras lançadas`), painel de **Últimas POCs / Compras abertas** (com edição direta ao clicar) e painel de **Últimas startups que deram match** (abrindo o histórico completo de matches ao clicar).
+- **Lançamento e Edição de Oportunidades**: Criação e edição completa de `POC`, `Primeira Compra` e `Compra`.
+- **Busca de Startups com Interesse Destacado**: Exibe startups compatíveis e destaca quais salvaram interesse em participar das POCs/Compras da empresa (sem botão redundante de nova POC e sem Assistente IA no fluxo corporativo).
 
 ### 🖼 Foto de Perfil Individualizada
 Cada perfil (seja Startup ou Empresa) possui sua própria imagem de avatar isolada, persistida tanto no estado da sessão quanto no banco de dados, sem vazamento de imagem ao alternar de conta.

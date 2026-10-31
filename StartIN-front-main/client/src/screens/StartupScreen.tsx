@@ -144,6 +144,7 @@ export function Startup({
         avatarUrl: avatarUrl || undefined,
       });
       onProfileUpdated(updated);
+      await api.recalculateMatches(updated.id || targetId, false).catch(() => {});
       setFeedbackMsg(
         "Preferências de matching salvas! As oportunidades em 'Para você' foram filtradas pelo seu perfil."
       );
@@ -162,7 +163,7 @@ export function Startup({
 
   return (
     <>
-      <BackButton label="Voltar para Dashboard" onClick={() => go("dashboard")} />
+      <BackButton label="Voltar para Home" onClick={() => go("dashboard")} />
       <PageTitle
         title="Minha startup"
         description="Perfil usado para personalizar os matches e as buscas da IA."

@@ -12,6 +12,7 @@ import {
   Heart,
   Mail,
   MoreHorizontal,
+  Pencil,
   Phone,
   Plus,
   Rocket,
@@ -29,7 +30,7 @@ import {
   type StartupMatchItem,
 } from "@/lib/api";
 import type { Screen } from "@/types/startin";
-import { getInitials } from "@/utils/formatters";
+import { formatOppType, getBadgeColorByType, getInitials } from "@/utils/formatters";
 
 type SortOption = "match-desc" | "match-asc" | "name-asc" | "name-desc";
 
@@ -39,40 +40,44 @@ type SortOption = "match-desc" | "match-asc" | "name-asc" | "name-desc";
 export function MyOpportunities({
   go,
   onSelectOpportunity,
+  onEditOpportunity,
 }: {
   go: (s: Screen) => void;
-  onSelectOpportunity: (o: OpportunityItem) => void;
+  onSelectOpportunity?: (o: OpportunityItem) => void;
+  onEditOpportunity?: (o: OpportunityItem) => void;
 }) {
   const [opps, setOpps] = useState<OpportunityItem[]>([]);
   const session = getSession();
 
   useEffect(() => {
     api
-      .getOpportunities()
+      .getOpportunities(undefined, undefined, session?.companyId)
       .then((res) => {
-        // Se a empresa estiver logada, pode priorizar oportunidades da própria empresa
-        if (session?.companyId) {
-          const myOpps = res.filter(
-            (o) => String(o.companyId) === String(session.companyId) || o.type === "POC"
-          );
-          setOpps(myOpps.length > 0 ? myOpps : res);
-        } else {
+        if (res.length > 0) {
           setOpps(res);
+        } else {
+          return api.getOpportunities().then((all) => {
+            const corporate = all.filter((o) => {
+              const t = formatOppType(o.type);
+              return t === "POC" || t === "Primeira Compra" || t === "Compra";
+            });
+            setOpps(corporate);
+          });
         }
       })
       .catch(() => {});
   }, [session?.companyId]);
 
-  const publishedCount = opps.filter((o) => !o.status || o.status === "PUBLICADA").length || 3;
-  const reviewCount = opps.filter((o) => o.status === "EM_ANALISE").length || 1;
-  const closedCount = opps.filter((o) => o.status === "ENCERRADA").length || 1;
+  const publishedCount = opps.filter((o) => !o.status || o.status === "PUBLICADA").length;
+  const reviewCount = opps.filter((o) => o.status === "EM_ANALISE").length;
+  const closedCount = opps.filter((o) => o.status === "ENCERRADA").length;
 
   return (
     <>
-      <BackButton label="Voltar para Início" onClick={() => go("search-startups")} />
+      <BackButton label="Voltar para Home" onClick={() => go("dashboard")} />
       <PageTitle
         title="Lançar oportunidades"
-        description="Publique e gerencie oportunidades corporativas de POC, Compra ou POC + Compra para atrair startups."
+        description="Publique e edite oportunidades corporativas de POC, Primeira Compra ou Compra para atrair startups compatíveis."
         action={
           <PrimaryButton onClick={() => go("create-opportunity")}>
             <Plus size={15} /> Nova POC / Compra
@@ -98,63 +103,86 @@ export function MyOpportunities({
             </div>
           ))}
         </div>
-        <h2 className="mt-8 text-sm font-extrabold text-[#123b62]">Oportunidades recentes</h2>
+        <div className="mt-8 flex items-center justify-between">
+          <h2 className="text-sm font-extrabold text-[#123b62]">
+            POCs e Compras lançadas pela empresa
+          </h2>
+          <span className="text-[11px] text-[#7c8993]">Clique em um item para editar</span>
+        </div>
         <div className="mt-4 space-y-3">
-          {(opps.length > 0
-            ? opps.slice(0, 4)
-            : [
-                {
-                  id: "poc-1",
-                  type: "POC",
-                  title: "POC — Inteligência Operacional & Analytics",
-                  short: "Demanda para validação de solução de automação e dados internos.",
-                  description: "Demanda para validação de solução de automação e dados internos.",
-                  match: 94,
-                  meta: "Aberta · Brasil · Remoto",
-                  tags: "IA • SaaS • B2B • Dados",
-                },
-              ]
-          ).map((o) => (
-            <div
-              key={o.id}
-              onClick={() => {
-                onSelectOpportunity(o);
-                go("opportunity");
-              }}
-              className="cursor-pointer rounded-xl bg-[#f7f9fa] p-5 transition hover:bg-[#edf3f8]"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-[#111827] px-2.5 py-0.5 text-[10px] font-extrabold text-white">
-                      {o.type}
-                    </span>
-                    <p className="text-sm font-extrabold text-[#2b4b66]">{o.title}</p>
+          {opps.length > 0 ? (
+            opps.map((o) => (
+              <div
+                key={o.id}
+                onClick={() => {
+                  if (onEditOpportunity) {
+                    onEditOpportunity(o);
+                    go("edit-opportunity");
+                  } else {
+                    onSelectOpportunity?.(o);
+                    go("edit-opportunity");
+                  }
+                }}
+                className="group min-w-0 overflow-hidden cursor-pointer rounded-xl border border-transparent bg-[#f7f9fa] p-5 transition hover:border-[#111827] hover:bg-white"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${getBadgeColorByType(
+                          o.type,
+                          o.color
+                        )}`}
+                      >
+                        {formatOppType(o.type)}
+                      </span>
+                      <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-bold text-[#18734d]">
+                        {o.status === "ENCERRADA"
+                          ? "Encerrada"
+                          : o.status === "EM_ANALISE"
+                          ? "Em análise"
+                          : "Publicada"}
+                      </span>
+                      <p className="text-sm font-extrabold text-[#111827] break-words [overflow-wrap:anywhere]">
+                        {o.title}
+                      </p>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-xs text-[#788791] break-words [overflow-wrap:anywhere]">
+                      {o.shortDescription || o.short || o.description}
+                    </p>
                   </div>
-                  <p className="mt-2 text-xs text-[#788791]">
-                    {o.shortDescription || o.short || o.description}
-                  </p>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-[#111827] shadow-2xs group-hover:bg-[#111827] group-hover:text-[#FEC908]">
+                    <Pencil size={12} /> Editar
+                  </span>
                 </div>
-                <button type="button" onClick={(e) => e.stopPropagation()}>
-                  <MoreHorizontal size={17} className="text-[#82909a]" />
-                </button>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(o.tags || "IA • SaaS • B2B • Dados")
+                    .split(/[•,]/)
+                    .map((x) => x.trim())
+                    .filter(Boolean)
+                    .map((x) => (
+                      <span
+                        key={x}
+                        className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-[#52708a]"
+                      >
+                        {x}
+                      </span>
+                    ))}
+                </div>
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {(o.tags || "IA • SaaS • B2B • Dados")
-                  .split(/[•,]/)
-                  .map((x) => x.trim())
-                  .filter(Boolean)
-                  .map((x) => (
-                    <span
-                      key={x}
-                      className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-[#52708a]"
-                    >
-                      {x}
-                    </span>
-                  ))}
+            ))
+          ) : (
+            <div className="rounded-xl border border-dashed border-[#d9e0e5] py-10 text-center">
+              <p className="text-xs font-bold text-[#234666]">
+                Nenhuma POC ou Compra lançada ainda
+              </p>
+              <div className="mt-4 flex justify-center">
+                <PrimaryButton onClick={() => go("create-opportunity")}>
+                  <Plus size={14} /> Criar primeira POC / Compra
+                </PrimaryButton>
               </div>
             </div>
-          ))}
+          )}
         </div>
       </section>
     </>
@@ -162,21 +190,62 @@ export function MyOpportunities({
 }
 
 // ==========================================
-// 2. Formulário de Criação de POC / Compra
+// 2. Formulário de Criação e Edição de POC / Primeira Compra / Compra
 // ==========================================
 export function CreateForm({
   go,
   opportunity = false,
+  editingOpportunity = null,
+  onNotificationTrigger,
 }: {
   go: (s: Screen) => void;
   opportunity?: boolean;
+  editingOpportunity?: OpportunityItem | null;
+  onNotificationTrigger?: () => void;
 }) {
+  const isEditing = Boolean(editingOpportunity && editingOpportunity.id);
   const [published, setPublished] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedType, setSelectedType] = useState("POC");
-  const [selectedTags, setSelectedTags] = useState<string[]>(["IA", "SaaS", "B2B", "Dados"]);
+  const [title, setTitle] = useState(editingOpportunity?.title || "");
+  const [description, setDescription] = useState(editingOpportunity?.description || "");
+  const [meta, setMeta] = useState(
+    editingOpportunity?.meta || editingOpportunity?.metaInfo || "Aberta · Brasil · Remoto"
+  );
+  const [status, setStatus] = useState(editingOpportunity?.status || "PUBLICADA");
+  const [selectedType, setSelectedType] = useState(() =>
+    editingOpportunity ? formatOppType(editingOpportunity.type) : "POC"
+  );
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
+    if (editingOpportunity?.tags) {
+      const parsed = editingOpportunity.tags
+        .split(/[•,]/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+      if (parsed.length > 0) return parsed;
+    }
+    return ["IA", "SaaS", "B2B", "Dados"];
+  });
+  const [saving, setSaving] = useState(false);
   const session = getSession();
+
+  useEffect(() => {
+    if (editingOpportunity) {
+      setTitle(editingOpportunity.title || "");
+      setDescription(editingOpportunity.description || "");
+      setMeta(
+        editingOpportunity.meta || editingOpportunity.metaInfo || "Aberta · Brasil · Remoto"
+      );
+      setStatus(editingOpportunity.status || "PUBLICADA");
+      setSelectedType(formatOppType(editingOpportunity.type));
+      if (editingOpportunity.tags) {
+        const parsed = editingOpportunity.tags
+          .split(/[•,]/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+        if (parsed.length > 0) setSelectedTags(parsed);
+      }
+      setPublished(false);
+    }
+  }, [editingOpportunity]);
 
   const toggleTag = (t: string) => {
     setSelectedTags((prev) =>
@@ -184,15 +253,34 @@ export function CreateForm({
     );
   };
 
+  const toBackendType = (label: string) => {
+    if (label === "Primeira Compra") return "PRIMEIRA_COMPRA";
+    if (label === "Compra") return "COMPRA";
+    return "POC";
+  };
+
   const handlePublish = async () => {
+    setSaving(true);
     try {
-      if (opportunity) {
-        await api.createOpportunity({
-          type: selectedType === "POC + Compra" ? "POC" : selectedType,
-          title: title || "Desafio corporativo de POC / Compra",
-          description: description || "Programa de inovação aberta e contratação corporativa.",
+      if (isEditing && editingOpportunity) {
+        await api.updateOpportunity(editingOpportunity.id, {
+          type: toBackendType(selectedType),
+          title: title || editingOpportunity.title,
+          description: description || editingOpportunity.description,
           tags: selectedTags.join(" • "),
-          meta: "Aberta · Brasil · Remoto",
+          meta: meta || "Aberta · Brasil · Remoto",
+          status,
+          companyId: editingOpportunity.companyId || session?.companyId,
+        });
+      } else if (opportunity) {
+        await api.createOpportunity({
+          type: toBackendType(selectedType),
+          title: title || `${selectedType} — Desafio Corporativo de Inovação`,
+          description:
+            description || "Programa corporativo de inovação aberta e contratação tecnológica.",
+          tags: selectedTags.join(" • "),
+          meta: meta || "Aberta · Brasil · Remoto",
+          status: "PUBLICADA",
           companyId: session?.companyId,
           companyName: session?.name,
         });
@@ -200,12 +288,18 @@ export function CreateForm({
         await api.createCompany({
           name: title || session?.name || "Empresa Alpha",
           type: selectedType,
-          description: description || "Organização parceira na StartIn.",
+          description: "",
+          demands: description || "Organização parceira na StartIn.",
           tags: selectedTags.join(", "),
         });
       }
-    } catch {}
-    setPublished(true);
+      onNotificationTrigger?.();
+    } catch {
+      // ignora erro local se ocorrer
+    } finally {
+      setSaving(false);
+      setPublished(true);
+    }
   };
 
   if (published) {
@@ -215,19 +309,23 @@ export function CreateForm({
           <Check size={30} strokeWidth={3} />
         </div>
         <h1 className="mt-7 text-[30px] font-extrabold tracking-[-.05em] text-[#111827]">
-          {opportunity ? "Oportunidade lançada!" : "Empresa cadastrada!"}
+          {isEditing
+            ? "Oportunidade atualizada!"
+            : opportunity
+            ? "Oportunidade lançada!"
+            : "Empresa cadastrada!"}
         </h1>
         <p className="mt-3 text-sm text-[#73818c]">
-          {opportunity
-            ? "Sua demanda de POC / Compra foi publicada com sucesso e já está disponível para as startups da plataforma."
-            : "Sua organização foi salva e já pode publicar oportunidades de POC e Compra."}
+          {isEditing
+            ? "As alterações da sua POC / Compra foram salvas no banco de dados e já refletem para as startups compatíveis."
+            : "Sua demanda corporativa foi publicada com sucesso e já está visível para startups do estágio correspondente."}
         </p>
-        <div className="mt-8 flex justify-center gap-3">
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <PrimaryButton secondary onClick={() => go("my-opportunities")}>
             Minhas oportunidades
           </PrimaryButton>
-          <PrimaryButton onClick={() => go("search-startups")}>
-            Buscar Startups <ArrowRight size={16} />
+          <PrimaryButton onClick={() => go("dashboard")}>
+            Voltar para Home <ArrowRight size={16} />
           </PrimaryButton>
         </div>
       </div>
@@ -236,34 +334,76 @@ export function CreateForm({
 
   return (
     <>
-      <BackButton label="Voltar para Lançar oportunidades" onClick={() => go("my-opportunities")} />
+      <BackButton
+        label="Voltar para Home"
+        onClick={() => go("dashboard")}
+      />
       <PageTitle
-        title="Lançar oportunidade de POC ou Compra"
-        description="Publique demandas corporativas de POC, Compra ou POC + Compra para conectar com startups aderentes."
+        title={
+          isEditing
+            ? "Editar POC / Compra"
+            : "Lançar oportunidade de POC, Primeira Compra ou Compra"
+        }
+        description={
+          isEditing
+            ? "Atualize o título, modalidade, prazo, status ou escopo desta oportunidade corporativa."
+            : "POCs e Primeira Compra são direcionadas a startups em Validação; Compras Corporativas são direcionadas a startups em Tração."
+        }
       />
       <section className="mt-8 rounded-2xl border border-[#e2e7eb] bg-white p-6 md:p-8">
-        <div>
-          <span className="mb-2 block text-xs font-semibold text-[#203754]">
-            Modalidade da oportunidade
-          </span>
-          <div className="flex gap-2 overflow-auto">
-            {["POC", "Compra", "POC + Compra"].map((x) => (
-              <button
-                key={x}
-                type="button"
-                onClick={() => setSelectedType(x)}
-                className={`rounded-lg px-6 py-3 text-xs font-bold whitespace-nowrap transition ${
-                  selectedType === x
-                    ? "bg-[#111827] text-white shadow-sm"
-                    : "bg-[#f3f6f8] text-[#486680] hover:bg-[#eaf2f8]"
-                }`}
-              >
-                {x}
-              </button>
-            ))}
+        <div className="grid gap-6 md:grid-cols-2">
+          <div>
+            <span className="mb-2 block text-xs font-semibold text-[#203754]">
+              Modalidade da oportunidade
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {["POC", "Primeira Compra", "Compra"].map((x) => (
+                <button
+                  key={x}
+                  type="button"
+                  onClick={() => setSelectedType(x)}
+                  className={`rounded-lg px-5 py-3 text-xs font-bold whitespace-nowrap transition ${
+                    selectedType === x
+                      ? "bg-[#111827] text-[#FEC908] shadow-sm"
+                      : "bg-[#f3f6f8] text-[#486680] hover:bg-[#eaf2f8]"
+                  }`}
+                >
+                  {x}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {isEditing && (
+            <div>
+              <span className="mb-2 block text-xs font-semibold text-[#203754]">
+                Status da oportunidade
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ["PUBLICADA", "Publicada (Aberta)"],
+                  ["EM_ANALISE", "Em análise"],
+                  ["ENCERRADA", "Encerrada"],
+                ].map(([stKey, stLabel]) => (
+                  <button
+                    key={stKey}
+                    type="button"
+                    onClick={() => setStatus(stKey)}
+                    className={`rounded-lg px-4 py-3 text-xs font-bold transition ${
+                      status === stKey
+                        ? "bg-[#111827] text-white"
+                        : "bg-[#f3f6f8] text-[#486680] hover:bg-[#eaf2f8]"
+                    }`}
+                  >
+                    {stLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
+
+        <div className="mt-7 grid gap-5 md:grid-cols-2">
           <div className="md:col-span-2">
             <Field
               label="Título da oportunidade"
@@ -273,15 +413,23 @@ export function CreateForm({
             />
           </div>
           <div className="md:col-span-2">
+            <Field
+              label="Prazo, localização e formato"
+              value={meta}
+              onChange={setMeta}
+              placeholder="Ex: Prazo 30/11/2026 · Brasil · Remoto"
+            />
+          </div>
+          <div className="md:col-span-2">
             <label className="block">
               <span className="mb-2 block text-xs font-semibold text-[#203754]">
-                Descrição da oportunidade e escopo
+                Descrição da oportunidade e escopo técnico
               </span>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="min-h-[130px] w-full rounded-lg border border-[#dfe4e9] p-3 text-sm outline-none focus:border-[#111827]"
-                placeholder="Descreva o problema que deseja resolver, o objetivo da POC/Compra, o público impactado e os critérios técnicos esperados."
+                placeholder="Descreva o problema que deseja resolver, o objetivo da POC/Compra e os critérios técnicos esperados."
               />
             </label>
           </div>
@@ -307,9 +455,15 @@ export function CreateForm({
             </div>
           </div>
         </div>
-        <div className="mt-8 flex justify-end">
-          <PrimaryButton onClick={handlePublish}>
-            Publicar oportunidade <ArrowRight size={16} />
+        <div className="mt-8 flex justify-end gap-3">
+          {isEditing && (
+            <PrimaryButton secondary onClick={() => go("dashboard")}>
+              Cancelar
+            </PrimaryButton>
+          )}
+          <PrimaryButton disabled={saving} onClick={handlePublish}>
+            {isEditing ? "Salvar alterações" : "Publicar oportunidade"}{" "}
+            <ArrowRight size={16} />
           </PrimaryButton>
         </div>
       </section>
@@ -338,6 +492,7 @@ export function SearchStartupsScreen({
   const [selectedArea, setSelectedArea] = useState<string>("Todas");
   const [selectedStage, setSelectedStage] = useState<string>("Todos");
   const [minMatch, setMinMatch] = useState<number>(0);
+  const [onlyInterested, setOnlyInterested] = useState<boolean>(false);
 
   const session = getSession();
   const activeCompanyId = companyId || session?.companyId;
@@ -352,6 +507,11 @@ export function SearchStartupsScreen({
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [activeCompanyId]);
+
+  const interestedCount = useMemo(
+    () => startups.filter((s) => s.interestedInCompanyPoc).length,
+    [startups]
+  );
 
   const availableAreas = useMemo(() => {
     const set = new Set<string>();
@@ -372,6 +532,7 @@ export function SearchStartupsScreen({
   const filtered = useMemo(() => {
     return startups
       .filter((s) => {
+        if (onlyInterested && !s.interestedInCompanyPoc) return false;
         if (selectedArea !== "Todas" && s.mainArea !== selectedArea) return false;
         if (selectedStage !== "Todos" && s.currentStage !== selectedStage) return false;
         if (minMatch > 0 && (s.matchScore ?? 0) < minMatch) return false;
@@ -384,17 +545,21 @@ export function SearchStartupsScreen({
         return true;
       })
       .sort((a, b) => {
-        const aScore = a.matchScore ?? 0;
-        const bScore = b.matchScore ?? 0;
-        if (sortBy === "match-desc") return bScore - aScore;
-        if (sortBy === "match-asc") return aScore - bScore;
+        // Prioriza startups com interesse registrado nas POCs/Compras quando ordenando por maior match
+        if (sortBy === "match-desc") {
+          const aInt = a.interestedInCompanyPoc ? 1 : 0;
+          const bInt = b.interestedInCompanyPoc ? 1 : 0;
+          if (bInt !== aInt) return bInt - aInt;
+          return (b.matchScore ?? 0) - (a.matchScore ?? 0);
+        }
+        if (sortBy === "match-asc") return (a.matchScore ?? 0) - (b.matchScore ?? 0);
         const aName = a.startupName || a.name || "";
         const bName = b.startupName || b.name || "";
         if (sortBy === "name-asc") return aName.localeCompare(bName);
         if (sortBy === "name-desc") return bName.localeCompare(aName);
         return 0;
       });
-  }, [startups, selectedArea, selectedStage, minMatch, query, sortBy]);
+  }, [startups, onlyInterested, selectedArea, selectedStage, minMatch, query, sortBy]);
 
   const sortLabels: Record<SortOption, string> = {
     "match-desc": "Maior match",
@@ -412,13 +577,34 @@ export function SearchStartupsScreen({
     <>
       <PageTitle
         title="Buscar startups"
-        description="Startups cadastradas na plataforma avaliadas pela IA com base nas demandas de POC e Compra da sua empresa."
-        action={
-          <PrimaryButton onClick={() => go("create-opportunity")}>
-            <Plus size={15} /> Nova POC / Compra
-          </PrimaryButton>
-        }
+        description="Startups compatíveis com sua empresa e startups que salvaram interesse em participar das suas POCs e Compras."
       />
+
+      {/* Abas de destaque: Todas vs Interessadas nas POCs / Compras lançadas pela empresa */}
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOnlyInterested(false)}
+          className={`rounded-full px-4 py-2 text-xs font-extrabold transition ${
+            !onlyInterested
+              ? "bg-[#111827] text-white shadow-xs"
+              : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          Todas com match ({startups.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setOnlyInterested(true)}
+          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-extrabold transition ${
+            onlyInterested
+              ? "bg-[#111827] text-[#FEC908] shadow-xs"
+              : "border border-[#bbf7d0] bg-[#f0fdf4] text-[#166534] hover:bg-[#dcfce7]"
+          }`}
+        >
+          <Heart size={12} /> Interessadas nas suas POCs / Compras ({interestedCount})
+        </button>
+      </div>
 
       <div className="mt-6 flex flex-col gap-3 rounded-xl border border-[#e0e5e9] bg-white p-3 md:flex-row">
         <div className="relative flex-1">
@@ -430,23 +616,6 @@ export function SearchStartupsScreen({
             className="h-10 w-full bg-transparent pl-10 pr-3 text-sm outline-none placeholder:text-[#9ca7af]"
           />
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowFilters((prev) => !prev)}
-          className={`flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-xs font-bold transition ${
-            showFilters || activeFiltersCount > 0
-              ? "border-[#111827] bg-[#eaf2f8] text-[#111827]"
-              : "border-[#dfe5e9] text-[#42617e] hover:bg-[#f5f8fa]"
-          }`}
-        >
-          <Filter size={14} /> Filtros
-          {activeFiltersCount > 0 && (
-            <span className="rounded-full bg-[#111827] px-1.5 py-0.5 text-[10px] text-white">
-              {activeFiltersCount}
-            </span>
-          )}
-        </button>
 
         <div className="relative">
           <button
@@ -488,93 +657,6 @@ export function SearchStartupsScreen({
           )}
         </div>
       </div>
-
-      {showFilters && (
-        <div className="mt-3 rounded-xl border border-[#dce4eb] bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#edf1f4] pb-3">
-            <span className="text-xs font-extrabold text-[#123b62]">
-              Filtrar startups por área, estágio e aderência
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedArea("Todas");
-                setSelectedStage("Todos");
-                setMinMatch(0);
-              }}
-              className="text-[11px] font-bold text-[#111827] hover:underline"
-            >
-              Resetar filtros
-            </button>
-          </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <div>
-              <p className="mb-2 text-[11px] font-bold text-[#52697d]">Área de atuação</p>
-              <div className="flex flex-wrap gap-1.5">
-                {availableAreas.map((area) => (
-                  <button
-                    key={area}
-                    type="button"
-                    onClick={() => setSelectedArea(area)}
-                    className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                      selectedArea === area
-                        ? "bg-[#111827] text-white"
-                        : "bg-[#f3f6f8] text-[#4b657d] hover:bg-[#e5ecf1]"
-                    }`}
-                  >
-                    {area}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-2 text-[11px] font-bold text-[#52697d]">Estágio</p>
-              <div className="flex flex-wrap gap-1.5">
-                {availableStages.map((stg) => (
-                  <button
-                    key={stg}
-                    type="button"
-                    onClick={() => setSelectedStage(stg)}
-                    className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                      selectedStage === stg
-                        ? "bg-[#111827] text-white"
-                        : "bg-[#f3f6f8] text-[#4b657d] hover:bg-[#e5ecf1]"
-                    }`}
-                  >
-                    {stg}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-2 text-[11px] font-bold text-[#52697d]">Aderência mínima</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  [0, "Todas"],
-                  [80, "80%+"],
-                  [85, "85%+"],
-                  [90, "90%+"],
-                ].map(([val, label]) => (
-                  <button
-                    key={String(label)}
-                    type="button"
-                    onClick={() => setMinMatch(Number(val))}
-                    className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                      minMatch === Number(val)
-                        ? "bg-[#111827] text-white"
-                        : "bg-[#f3f6f8] text-[#4b657d] hover:bg-[#e5ecf1]"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="mt-7 flex items-end justify-between">
         <div>
@@ -651,8 +733,32 @@ export function SearchStartupsScreen({
                   </div>
 
                   <p className="mt-3 text-xs leading-5 text-[#637280] line-clamp-2">
-                    {s.description || "Startup focada em tecnologia, dados e soluções inovadoras para empresas."}
+                    {s.problem || s.description || "Startup focada em tecnologia, dados e soluções inovadoras para empresas."}
                   </p>
+
+                  {s.interestedInCompanyPoc && (
+                    <div className="mt-3 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2">
+                      <p className="flex items-center gap-1.5 text-[10.5px] font-extrabold text-[#166534]">
+                        <Check size={11} /> Interesse salvo em oportunidade da sua empresa:
+                      </p>
+                      {s.interestedOpportunities && s.interestedOpportunities.length > 0 ? (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {s.interestedOpportunities.map((io) => (
+                            <span
+                              key={io.opportunityId}
+                              className="rounded-md bg-white px-2 py-0.5 text-[10px] font-bold text-[#15803d]"
+                            >
+                              {formatOppType(io.type)}: {io.title}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-0.5 text-[10px] text-[#15803d]">
+                          Demonstrou interesse direto em POC / Compra corporativa
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Somente até 3 tags em miniatura bem pequenas */}
                   <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
@@ -688,10 +794,10 @@ export function SearchStartupsScreen({
         <div className="mt-8 rounded-2xl border border-dashed border-[#d9e0e5] bg-white py-16 text-center">
           <Rocket className="mx-auto text-[#111827]" size={32} />
           <p className="mt-4 text-sm font-bold text-[#234666]">
-            Nenhuma startup encontrada com os filtros atuais
+            Nenhuma startup encontrada para a busca atual
           </p>
           <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#8a969f]">
-            Tente redefinir os filtros ou ampliar os termos de busca para encontrar outras startups cadastradas.
+            Tente ampliar os termos pesquisados na barra de busca para encontrar outras startups cadastradas.
           </p>
         </div>
       )}
@@ -705,11 +811,39 @@ export function SearchStartupsScreen({
 export function StartupMatchDetailScreen({
   go,
   startup,
+  companyId,
+  onNotificationTrigger,
 }: {
   go: (s: Screen) => void;
   startup: StartupMatchItem | null;
+  companyId?: number;
+  onNotificationTrigger?: () => void;
 }) {
   const [interestSent, setInterestSent] = useState(false);
+  const [sendingInterest, setSendingInterest] = useState(false);
+  const session = getSession();
+
+  const handleSendStartupInterest = async () => {
+    if (sendingInterest || !startup) return;
+    if (interestSent) {
+      setInterestSent(false);
+      return;
+    }
+    setSendingInterest(true);
+    try {
+      const targetStartupId = startup.startupId || startup.id;
+      const activeCompanyId = companyId || session?.companyId;
+      if (targetStartupId) {
+        await api.expressInterestInStartup(activeCompanyId, targetStartupId);
+      }
+      setInterestSent(true);
+      onNotificationTrigger?.();
+    } catch {
+      setInterestSent(true);
+    } finally {
+      setSendingInterest(false);
+    }
+  };
 
   if (!startup) {
     return (
@@ -926,23 +1060,40 @@ export function StartupMatchDetailScreen({
         </div>
       </section>
 
+      {/* Oportunidades da Empresa nas quais a Startup Salvou Interesse */}
+      {startup.interestedInCompanyPoc && (
+        <section className="mt-6 rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-5">
+          <h3 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#166534]">
+            <Check size={14} /> Esta startup salvou / manifestou interesse em participar de:
+          </h3>
+          {startup.interestedOpportunities && startup.interestedOpportunities.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {startup.interestedOpportunities.map((io) => (
+                <span
+                  key={io.opportunityId}
+                  className="rounded-xl border border-[#86efac] bg-white px-3.5 py-2 text-xs font-extrabold text-[#166534]"
+                >
+                  [{formatOppType(io.type)}] {io.title}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs font-semibold text-[#15803d]">
+              Interesse corporativo direto registrado pela startup nas demandas da sua empresa.
+            </p>
+          )}
+        </section>
+      )}
+
       {/* Grid de Resumo do que a startup faz e Análise de Matching */}
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
-        <section className="rounded-2xl border border-[#e2e7eb] bg-white p-6">
-          <h2 className="text-lg font-extrabold text-[#123b62]">Resumo do que a startup faz</h2>
-          <p className="mt-4 text-sm leading-7 text-[#576874]">
-            {startup.description ||
+      <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,.8fr)]">
+        <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e2e7eb] bg-white p-6">
+          <h2 className="text-lg font-extrabold text-[#123b62]">Solução e problema que resolve</h2>
+          <p className="mt-4 whitespace-pre-line text-sm leading-7 text-[#576874] break-words [overflow-wrap:anywhere]">
+            {startup.problem ||
+              startup.description ||
               "Startup especializada em soluções escaláveis de tecnologia, automação e dados, com foco em resolver desafios corporativos e impulsionar ganhos de eficiência."}
           </p>
-
-          {startup.problem && (
-            <div className="mt-5 rounded-xl border border-[#e8edf2] bg-[#fbfcfd] p-4">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#111827]">
-                Problema que a solução resolve
-              </h3>
-              <p className="mt-1.5 text-xs leading-5 text-[#5e707e]">{startup.problem}</p>
-            </div>
-          )}
 
           {startup.howItWorks && (
             <div className="mt-4 rounded-xl border border-[#e8edf2] bg-[#fbfcfd] p-4">
@@ -979,7 +1130,7 @@ export function StartupMatchDetailScreen({
             A IA avaliou que a solução desta startup possui alta aderência aos desafios operacionais da sua empresa.
           </p>
           <div className="mt-6 space-y-3">
-            <PrimaryButton full onClick={() => setInterestSent((prev) => !prev)}>
+            <PrimaryButton full disabled={sendingInterest} onClick={handleSendStartupInterest}>
               {interestSent ? (
                 <>
                   <Check size={16} /> Interesse corporativo enviado!
@@ -1110,23 +1261,6 @@ export function SearchCompaniesScreen({
           />
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowFilters((prev) => !prev)}
-          className={`flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-xs font-bold transition ${
-            showFilters || activeFiltersCount > 0
-              ? "border-[#111827] bg-[#eaf2f8] text-[#111827]"
-              : "border-[#dfe5e9] text-[#42617e] hover:bg-[#f5f8fa]"
-          }`}
-        >
-          <Filter size={14} /> Filtros
-          {activeFiltersCount > 0 && (
-            <span className="rounded-full bg-[#111827] px-1.5 py-0.5 text-[10px] text-white">
-              {activeFiltersCount}
-            </span>
-          )}
-        </button>
-
         <div className="relative">
           <button
             type="button"
@@ -1167,93 +1301,6 @@ export function SearchCompaniesScreen({
           )}
         </div>
       </div>
-
-      {showFilters && (
-        <div className="mt-3 rounded-xl border border-[#dce4eb] bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#edf1f4] pb-3">
-            <span className="text-xs font-extrabold text-[#123b62]">
-              Filtrar empresas por modalidade e setor
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedModality("Todas");
-                setSelectedSector("Todos");
-                setMinMatch(0);
-              }}
-              className="text-[11px] font-bold text-[#111827] hover:underline"
-            >
-              Resetar filtros
-            </button>
-          </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <div>
-              <p className="mb-2 text-[11px] font-bold text-[#52697d]">Modalidade de contratação</p>
-              <div className="flex flex-wrap gap-1.5">
-                {["Todas", "POC", "Compra", "POC + Compra"].map((mod) => (
-                  <button
-                    key={mod}
-                    type="button"
-                    onClick={() => setSelectedModality(mod)}
-                    className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                      selectedModality === mod
-                        ? "bg-[#111827] text-white"
-                        : "bg-[#f3f6f8] text-[#4b657d] hover:bg-[#e5ecf1]"
-                    }`}
-                  >
-                    {mod}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-2 text-[11px] font-bold text-[#52697d]">Setor</p>
-              <div className="flex flex-wrap gap-1.5">
-                {availableSectors.map((sec) => (
-                  <button
-                    key={sec}
-                    type="button"
-                    onClick={() => setSelectedSector(sec)}
-                    className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                      selectedSector === sec
-                        ? "bg-[#111827] text-white"
-                        : "bg-[#f3f6f8] text-[#4b657d] hover:bg-[#e5ecf1]"
-                    }`}
-                  >
-                    {sec}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-2 text-[11px] font-bold text-[#52697d]">Aderência mínima</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  [0, "Todas"],
-                  [80, "80%+"],
-                  [85, "85%+"],
-                  [90, "90%+"],
-                ].map(([val, label]) => (
-                  <button
-                    key={String(label)}
-                    type="button"
-                    onClick={() => setMinMatch(Number(val))}
-                    className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                      minMatch === Number(val)
-                        ? "bg-[#111827] text-white"
-                        : "bg-[#f3f6f8] text-[#4b657d] hover:bg-[#e5ecf1]"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="mt-7 flex items-end justify-between">
         <div>
@@ -1367,10 +1414,10 @@ export function SearchCompaniesScreen({
         <div className="mt-8 rounded-2xl border border-dashed border-[#d9e0e5] bg-white py-16 text-center">
           <Building2 className="mx-auto text-[#111827]" size={32} />
           <p className="mt-4 text-sm font-bold text-[#234666]">
-            Nenhuma empresa encontrada com os filtros atuais
+            Nenhuma empresa encontrada para a busca atual
           </p>
           <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#8a969f]">
-            Tente redefinir os filtros ou ampliar os termos de busca para encontrar outras organizações cadastradas.
+            Tente ampliar os termos pesquisados na barra de busca para encontrar outras organizações cadastradas.
           </p>
         </div>
       )}
@@ -1384,11 +1431,64 @@ export function SearchCompaniesScreen({
 export function CompanyMatchDetailScreen({
   go,
   company,
+  startupId,
+  onSelectOpportunity,
+  onNotificationTrigger,
 }: {
   go: (s: Screen) => void;
   company: CompanyMatchItem | null;
+  startupId?: number;
+  onSelectOpportunity?: (opp: OpportunityItem) => void;
+  onNotificationTrigger?: () => void;
 }) {
   const [proposalSent, setProposalSent] = useState(false);
+  const [sendingInterest, setSendingInterest] = useState(false);
+  const [companyOpps, setCompanyOpps] = useState<OpportunityItem[]>([]);
+  const [loadingOpps, setLoadingOpps] = useState(false);
+
+  const targetCompanyId = company?.companyId || company?.id;
+
+  useEffect(() => {
+    if (!targetCompanyId) {
+      setCompanyOpps([]);
+      return;
+    }
+    setLoadingOpps(true);
+    api
+      .getOpportunities(undefined, undefined, targetCompanyId)
+      .then((res) => {
+        const formatted = res.map((o) => ({
+          ...o,
+          type: formatOppType(o.type),
+          short: o.shortDescription || o.short || o.description,
+          match: o.match || o.matchScore || company?.matchScore || 93,
+          meta: o.meta || o.metaInfo || "Aberta · Brasil · Remoto",
+          color: getBadgeColorByType(o.type, o.color),
+          companyId: o.companyId || targetCompanyId,
+          companyName: o.companyName || company?.companyName || company?.name,
+        }));
+        setCompanyOpps(formatted);
+      })
+      .catch(() => setCompanyOpps([]))
+      .finally(() => setLoadingOpps(false));
+  }, [targetCompanyId]);
+
+  const handleSendCompanyInterest = async () => {
+    if (sendingInterest || !targetCompanyId) {
+      setProposalSent((prev) => !prev);
+      return;
+    }
+    setSendingInterest(true);
+    try {
+      await api.expressInterestInCompany(startupId, targetCompanyId);
+      setProposalSent(true);
+      onNotificationTrigger?.();
+    } catch {
+      setProposalSent(true);
+    } finally {
+      setSendingInterest(false);
+    }
+  };
 
   if (!company) {
     return (
@@ -1605,23 +1705,84 @@ export function CompanyMatchDetailScreen({
         </div>
       </section>
 
-      {/* Grid de Resumo das Demandas e Análise de Matching */}
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
-        <section className="rounded-2xl border border-[#e2e7eb] bg-white p-6">
-          <h2 className="text-lg font-extrabold text-[#123b62]">Resumo do que a empresa faz</h2>
-          <p className="mt-4 text-sm leading-7 text-[#576874]">
-            {company.description ||
-              "Organização atuante no mercado com programas contínuos de inovação aberta, buscando parcerias estratégicas com startups para testes de conceitos e contratos de fornecimento."}
-          </p>
+      {/* Seção de Todas as Oportunidades Geradas por Esta Empresa */}
+      <section className="mt-6 min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#e2e7eb] bg-white p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-base font-extrabold text-[#111827] break-words [overflow-wrap:anywhere]">
+              Oportunidades lançadas por {companyName}
+            </h2>
+            <p className="mt-0.5 text-xs text-[#64748b]">
+              Veja todas as demandas de POC, Primeira Compra e Compra publicadas por esta empresa e clique para acessar os detalhes.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full bg-[#111827] px-3 py-1 text-xs font-extrabold text-[#FEC908]">
+            {companyOpps.length}{" "}
+            {companyOpps.length === 1 ? "oportunidade ativa" : "oportunidades ativas"}
+          </span>
+        </div>
 
-          {company.demands && (
-            <div className="mt-6 rounded-xl border border-[#dbe6ef] bg-[#f7fafc] p-4">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#111827]">
-                Demandas abertas de POC e Compra
-              </h3>
-              <p className="mt-2 text-xs leading-6 text-[#4d6377]">{company.demands}</p>
+        <div className="mt-4 grid min-w-0 gap-3 md:grid-cols-2">
+          {loadingOpps ? (
+            <p className="text-xs text-[#73808b]">Carregando oportunidades da empresa...</p>
+          ) : companyOpps.length > 0 ? (
+            companyOpps.map((opp) => (
+              <div
+                key={opp.id}
+                onClick={() => {
+                  onSelectOpportunity?.(opp);
+                  go("opportunity");
+                }}
+                className="group flex w-full min-w-0 max-w-full cursor-pointer flex-col justify-between overflow-hidden rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4 transition hover:border-[#111827] hover:bg-white hover:shadow-xs"
+              >
+                <div className="min-w-0 max-w-full overflow-hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${getBadgeColorByType(
+                        opp.type,
+                        opp.color
+                      )}`}
+                    >
+                      {formatOppType(opp.type)}
+                    </span>
+                    <span className="shrink-0 text-xs font-extrabold text-[#25805e]">
+                      {opp.match}% match
+                    </span>
+                  </div>
+                  <h3 className="mt-2.5 text-sm font-extrabold text-[#111827] whitespace-normal break-words [overflow-wrap:anywhere] group-hover:underline">
+                    {opp.title}
+                  </h3>
+                  <p className="mt-1.5 text-xs leading-5 text-[#64748b] whitespace-normal break-words [overflow-wrap:anywhere]">
+                    {opp.short || opp.description}
+                  </p>
+                </div>
+                <div className="mt-3 flex min-w-0 items-center justify-between gap-2 border-t border-[#e2e8f0] pt-2.5">
+                  <span className="truncate text-[10.5px] font-semibold text-[#64748b]">
+                    {opp.meta}
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs font-extrabold text-[#111827]">
+                    Abrir <ArrowRight size={12} />
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="md:col-span-2 rounded-xl border border-dashed border-[#d9e0e5] py-6 text-center text-xs text-[#73808b]">
+              Esta empresa ainda não possui oportunidades individuais listadas, mas você pode registrar interesse corporativo direto ao lado.
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Grid de Resumo das Demandas e Análise de Matching */}
+      <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,.8fr)]">
+        <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e2e7eb] bg-white p-6">
+          <h2 className="text-lg font-extrabold text-[#123b62]">Contexto e demandas da empresa</h2>
+          <p className="mt-4 text-sm leading-7 text-[#576874] whitespace-pre-line break-words [overflow-wrap:anywhere]">
+            {company.demands ||
+              company.description ||
+              "Organização atuante no mercado com programas contínuos de inovação aberta, buscando parcerias estratégicas com startups para testes de conceitos e contratos de fornecimento."}
+          </p>
 
           <h3 className="mt-8 text-sm font-extrabold text-[#123b62]">
             Por que este match faz sentido (Análise da IA)
@@ -1649,10 +1810,10 @@ export function CompanyMatchDetailScreen({
             Sua startup preenche os critérios tecnológicos e de mercado procurados por esta empresa.
           </p>
           <div className="mt-6 space-y-3">
-            <PrimaryButton full onClick={() => setProposalSent((prev) => !prev)}>
+            <PrimaryButton full disabled={sendingInterest} onClick={handleSendCompanyInterest}>
               {proposalSent ? (
                 <>
-                  <Check size={16} /> Interesse em POC / Compra enviado!
+                  <Check size={16} /> Interesse registrado nas oportunidades da empresa!
                 </>
               ) : (
                 <>
@@ -1681,11 +1842,13 @@ export function CompanyProfileScreen({
   companyId,
   company,
   onCompanyUpdated,
+  onNotificationTrigger,
 }: {
   go: (s: Screen) => void;
   companyId?: number;
   company?: CompanyProfileData | null;
   onCompanyUpdated?: (c: CompanyProfileData) => void;
+  onNotificationTrigger?: () => void;
 }) {
   const session = getSession();
   const [form, setForm] = useState<CompanyProfileData>({
@@ -1765,10 +1928,11 @@ export function CompanyProfileScreen({
         await api.updateUser(session.userId, {
           name: form.name,
           phone: form.phone,
+          cnpj: form.cnpj,
           avatarUrl: form.avatarUrl,
         }).catch(() => {});
       }
-      const updated = await api.updateCompany(targetId, form);
+      const updated = await api.updateCompany(targetId, { ...form, description: "" });
       setForm(updated);
       onCompanyUpdated?.(updated);
       const current = getSession();
@@ -1776,11 +1940,13 @@ export function CompanyProfileScreen({
         saveSession({
           ...current,
           name: updated.name,
+          cnpj: updated.cnpj || current.cnpj,
           phone: updated.phone || current.phone,
           avatarUrl: updated.avatarUrl || current.avatarUrl,
         });
       }
       setSavedNotice("Perfil da empresa atualizado com sucesso no banco de dados!");
+      onNotificationTrigger?.();
       setTimeout(() => setSavedNotice(""), 3500);
     } catch {
       setSavedNotice("Perfil salvo localmente.");
@@ -1791,10 +1957,10 @@ export function CompanyProfileScreen({
 
   return (
     <>
-      <BackButton label="Voltar para Buscar startups" onClick={() => go("search-startups")} />
+      <BackButton label="Voltar para Home" onClick={() => go("dashboard")} />
       <PageTitle
-        title="Perfil da empresa"
-        description="Mantenha os dados, contatos e demandas da sua organização atualizados para o matching da IA."
+        title="Minha empresa (Conta & Perfil)"
+        description="Mantenha CNPJ, telefone, contatos e demandas da sua organização atualizados para o matching da IA."
       />
 
       <section className="mt-8 rounded-2xl border border-[#e2e7eb] bg-white p-6 md:p-8">
@@ -1857,16 +2023,7 @@ export function CompanyProfileScreen({
 
           <div className="md:col-span-2">
             <TextAreaField
-              label="Descrição da empresa"
-              value={form.description || ""}
-              onChange={setField("description")}
-              placeholder="Descreva a atuação da empresa e áreas de negócio."
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <TextAreaField
-              label="Demandas abertas para POC e Compra"
+              label="Demandas abertas para POC, Primeira Compra e Compra"
               value={form.demands || ""}
               onChange={setField("demands")}
               placeholder="Descreva os desafios e problemas que deseja resolver com soluções de startups."
@@ -1883,12 +2040,12 @@ export function CompanyProfileScreen({
           <Field label="CNPJ" value={form.cnpj || ""} onChange={setField("cnpj")} />
           <Field label="Site" value={form.website || ""} onChange={setField("website")} />
 
-          <div>
+          <div className="md:col-span-2">
             <span className="mb-2 block text-xs font-semibold text-[#203754]">
               Modalidade preferencial
             </span>
-            <div className="flex gap-2">
-              {["POC", "Compra", "POC + Compra"].map((m) => (
+            <div className="flex flex-wrap gap-2">
+              {["POC", "Primeira Compra", "Compra", "POC + Compra"].map((m) => (
                 <button
                   key={m}
                   type="button"

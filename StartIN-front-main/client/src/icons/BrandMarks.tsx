@@ -1,9 +1,19 @@
 import React from "react";
 
-export function Logo({ compact = false }: { compact?: boolean }) {
+export function Logo({
+  compact = false,
+  inverted = false,
+}: {
+  compact?: boolean;
+  inverted?: boolean;
+}) {
   return (
     <div className="flex items-center gap-2">
-      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+      <div
+        className={`relative flex h-9 w-9 shrink-0 items-center justify-center ${
+          inverted ? "rounded-xl bg-white p-1 shadow-xs" : ""
+        }`}
+      >
         <img
           src="/icons/rocket-icon.png"
           alt="StartIn"
@@ -11,12 +21,20 @@ export function Logo({ compact = false }: { compact?: boolean }) {
         />
       </div>
       <div>
-        <div className="text-[20px] font-black tracking-[-.04em] text-[#111827] leading-none flex items-center">
+        <div
+          className={`flex items-center text-[20px] font-black leading-none tracking-[-.04em] ${
+            inverted ? "text-white" : "text-[#111827]"
+          }`}
+        >
           <span>Start</span>
           <span className="text-[#FEC908]">In</span>
         </div>
         {!compact && (
-          <div className="mt-0.5 max-w-[140px] text-[9.5px] leading-3 text-[#64748b] font-medium">
+          <div
+            className={`mt-0.5 max-w-[140px] text-[9.5px] font-medium leading-3 ${
+              inverted ? "text-gray-400" : "text-[#64748b]"
+            }`}
+          >
             Oportunidades que combinam com sua startup.
           </div>
         )}

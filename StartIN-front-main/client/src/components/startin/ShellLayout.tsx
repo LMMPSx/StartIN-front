@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ArrowRight,
   Bell,
   Bookmark,
   Bot,
@@ -7,6 +8,7 @@ import {
   ChevronDown,
   FilePlus2,
   FileText,
+  HomeIcon,
   Logo,
   LogOut,
   Menu,
@@ -17,7 +19,7 @@ import {
   UserRound,
   X,
 } from "@/icons";
-import { clearSession } from "@/lib/api";
+import { clearSession, type NotificationItem } from "@/lib/api";
 import {
   NAV_ITEMS_COMPANY,
   NAV_ITEMS_STARTUP,
@@ -33,7 +35,7 @@ const SCREEN_BREADCRUMB_LABELS: Record<Screen, string> = {
   reset: "Nova senha",
   verify: "Verificação",
   onboarding: "Onboarding",
-  dashboard: "Dashboard",
+  dashboard: "Home",
   "for-you": "Para você",
   explore: "Explorar",
   "search-companies": "Buscar empresas",
@@ -55,6 +57,8 @@ const SCREEN_BREADCRUMB_LABELS: Record<Screen, string> = {
   match: "Análise de Match",
   "create-company": "Cadastrar empresa",
   "create-opportunity": "Lançar POC / Compra",
+  "edit-opportunity": "Editar POC / Compra",
+  "company-matches-history": "Histórico de Matches",
   "interest-success": "Interesse registrado",
   "opportunity-success": "Oportunidade publicada",
 };
@@ -73,21 +77,24 @@ export function AuthShell({
       <section className="startin-auth-hero hidden lg:flex lg:flex-col lg:justify-between">
         <div className="relative z-10">
           <div className="flex items-center gap-3 text-[24px] font-black tracking-[.02em]">
-            <span>Start</span><span className="text-[#FEC908]">In</span>
+            <span className="text-[#111827]">Start</span>
+            <span className="text-[#FEC908]">In</span>
           </div>
           <div className="mt-20 max-w-[420px]">
             <OrbitMark />
-            <h1 className="mt-8 text-[44px] font-black leading-[1.04] tracking-[-.05em] text-white">
+            <h1 className="mt-8 text-[44px] font-black leading-[1.04] tracking-[-.05em] text-[#111827]">
               {sideTitle}
             </h1>
-            <p className="mt-6 max-w-[360px] text-[15px] leading-6 text-gray-300 font-medium">{sideText}</p>
+            <p className="mt-6 max-w-[360px] text-[15px] font-medium leading-6 text-[#4b5563]">
+              {sideText}
+            </p>
           </div>
         </div>
-        <div className="relative z-10 text-xs text-gray-400 font-medium">
+        <div className="relative z-10 text-xs font-medium text-[#6b7280]">
           StartIn © 2026 · O ecossistema para os próximos grandes começos.
         </div>
-        <div className="absolute -bottom-44 -right-28 h-[470px] w-[470px] rounded-full border-[54px] border-[#1f2937]/50" />
-        <div className="absolute -right-10 top-24 h-64 w-64 rounded-full border border-[#FEC908]/20" />
+        <div className="absolute -bottom-44 -right-28 h-[470px] w-[470px] rounded-full border-[54px] border-[#f1f5f9]" />
+        <div className="absolute -right-10 top-24 h-64 w-64 rounded-full border border-[#FEC908]/35" />
       </section>
       <section className="flex min-h-screen items-center justify-center p-5 md:p-10">
         <div className="startin-auth-card p-7 md:p-10">
@@ -105,6 +112,7 @@ export function Sidebar({
   screen,
   go,
   onClose,
+  mobileOpen = false,
   accountType = "STARTUP",
   matchesCount,
   savedCount = 0,
@@ -113,6 +121,7 @@ export function Sidebar({
   screen: Screen;
   go: (s: Screen) => void;
   onClose: () => void;
+  mobileOpen?: boolean;
   accountType?: AccountType;
   matchesCount: number;
   savedCount?: number;
@@ -122,21 +131,35 @@ export function Sidebar({
   const navItems = isCompany ? NAV_ITEMS_COMPANY : NAV_ITEMS_STARTUP;
 
   return (
-    <aside className="startin-sidebar shadow-xl lg:shadow-none">
-      <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-[#e8edf0] px-5">
-        <div className="flex items-center gap-2">
-          <Logo />
+    <aside
+      className={`startin-sidebar shadow-xl lg:shadow-none ${
+        mobileOpen ? "is-open" : ""
+      }`}
+    >
+      <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-white/10 px-5">
+        <button
+          type="button"
+          onClick={() => {
+            go("dashboard");
+            onClose();
+          }}
+          className="flex items-center gap-2 text-left"
+        >
+          <Logo inverted />
           <span
             className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${
               isCompany
-                ? "bg-[#fef08a] text-[#854d0e]"
-                : "bg-[#111827] text-[#FEC908]"
+                ? "bg-white text-[#111827]"
+                : "bg-[#FEC908] text-[#111827]"
             }`}
           >
             {isCompany ? "Empresa" : "Startup"}
           </span>
-        </div>
-        <button onClick={onClose} className="rounded-lg p-1 text-[#83909b] lg:hidden">
+        </button>
+        <button
+          onClick={onClose}
+          className="rounded-lg p-1 text-gray-400 transition hover:text-white lg:hidden"
+        >
           <X size={18} />
         </button>
       </div>
@@ -153,23 +176,26 @@ export function Sidebar({
               }}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
                 isActive
-                  ? "bg-[#111827] text-white shadow-xs"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-black"
+                  ? "bg-white text-[#111827] shadow-xs"
+                  : "text-gray-300 hover:bg-white/10 hover:text-white"
               }`}
             >
-              <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} />
-              <span className="truncate">{item.label}</span>
-              {item.id === "matches" && !isCompany && (
-                <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  isActive ? "bg-[#FEC908] text-[#111827]" : "bg-[#fef08a] text-[#854d0e]"
-                }`}>
-                  {matchesCount || 2}
+              {item.id === "search-startups" ? (
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white p-0.5 shadow-2xs">
+                  <Icon size={15} />
                 </span>
+              ) : (
+                <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} />
               )}
+              <span className="truncate">{item.label}</span>
               {item.id === "saved-opportunities" && !isCompany && savedCount > 0 && (
-                <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  isActive ? "bg-[#FEC908] text-[#111827]" : "bg-[#dcfce7] text-[#166534]"
-                }`}>
+                <span
+                  className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    isActive
+                      ? "bg-[#111827] text-[#FEC908]"
+                      : "bg-[#FEC908] text-[#111827]"
+                  }`}
+                >
                   {savedCount}
                 </span>
               )}
@@ -178,7 +204,7 @@ export function Sidebar({
         })}
       </nav>
       <div className="mt-auto px-4 pb-6">
-        <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-[#9ca3af]">
+        <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-gray-400">
           Conta ({isCompany ? "Empresa" : "Startup"})
         </p>
         <button
@@ -188,8 +214,8 @@ export function Sidebar({
           }}
           className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
             screen === "account" || screen === "startup" || screen === "company-profile"
-              ? "bg-[#111827] text-white shadow-xs"
-              : "text-gray-600 hover:bg-gray-100 hover:text-black"
+              ? "bg-white text-[#111827] shadow-xs"
+              : "text-gray-300 hover:bg-white/10 hover:text-white"
           }`}
         >
           {isCompany ? <Building2 size={17} /> : <UserRound size={17} />}
@@ -200,10 +226,10 @@ export function Sidebar({
             go("settings");
             onClose();
           }}
-          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+          className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
             screen === "settings"
-              ? "bg-[#111827] text-white shadow-xs"
-              : "text-gray-600 hover:bg-gray-100 hover:text-black"
+              ? "bg-white text-[#111827] shadow-xs"
+              : "text-gray-300 hover:bg-white/10 hover:text-white"
           }`}
         >
           <SettingsIcon size={17} />
@@ -218,7 +244,7 @@ export function Sidebar({
               go("login");
             }
           }}
-          className="mt-3 flex w-full items-center gap-3 border-t border-[#edf0f2] px-3 pt-4 text-left text-xs font-semibold text-[#8a949d] hover:text-[#075394]"
+          className="mt-3 flex w-full items-center gap-3 border-t border-white/10 px-3 pt-4 text-left text-xs font-semibold text-gray-400 transition hover:text-[#FEC908]"
         >
           <LogOut size={16} />
           Sair
@@ -236,6 +262,8 @@ export function AppShell({
   accountType = "STARTUP",
   matchesCount,
   savedCount = 0,
+  notifications = [],
+  onNotificationClick,
   onLogout,
   children,
 }: {
@@ -246,13 +274,35 @@ export function AppShell({
   accountType?: AccountType;
   matchesCount: number;
   savedCount?: number;
+  notifications?: NotificationItem[];
+  onNotificationClick?: (n: NotificationItem) => void;
   onLogout?: () => void;
   children: React.ReactNode;
 }) {
   const [menu, setMenu] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [notifPreviewOpen, setNotifPreviewOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const notifHoverTimerRef = useRef<number | null>(null);
   const isCompany = accountType === "COMPANY";
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadBadgeLabel = unreadCount > 10 ? "10+" : String(unreadCount);
+  const latestThreeNotifications = notifications.slice(0, 3);
+
+  const handleNotifMouseEnter = () => {
+    if (notifHoverTimerRef.current) {
+      window.clearTimeout(notifHoverTimerRef.current);
+      notifHoverTimerRef.current = null;
+    }
+    setNotifPreviewOpen(true);
+  };
+
+  const handleNotifMouseLeave = () => {
+    notifHoverTimerRef.current = window.setTimeout(() => {
+      setNotifPreviewOpen(false);
+    }, 180);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -264,7 +314,12 @@ export function AppShell({
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      if (notifHoverTimerRef.current) {
+        window.clearTimeout(notifHoverTimerRef.current);
+      }
+    };
   }, []);
 
   const breadcrumbLabel = SCREEN_BREADCRUMB_LABELS[screen] || "Minha conta";
@@ -272,20 +327,19 @@ export function AppShell({
   return (
     <div className="startin-app-shell">
       <div
-        className={`${menu ? "block" : "hidden"} fixed inset-0 z-30 bg-[#062f61]/20 lg:hidden`}
+        className={`${menu ? "block" : "hidden"} fixed inset-0 z-30 bg-[#062f61]/30 lg:hidden`}
         onClick={() => setMenu(false)}
       />
-      <div className={`${menu ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
-        <Sidebar
-          screen={screen}
-          go={go}
-          onClose={() => setMenu(false)}
-          accountType={accountType}
-          matchesCount={matchesCount}
-          savedCount={savedCount}
-          onLogout={onLogout}
-        />
-      </div>
+      <Sidebar
+        screen={screen}
+        go={go}
+        onClose={() => setMenu(false)}
+        mobileOpen={menu}
+        accountType={accountType}
+        matchesCount={matchesCount}
+        savedCount={savedCount}
+        onLogout={onLogout}
+      />
       <div className="lg:pl-[248px]">
         <header className="startin-header px-5 md:px-9">
           <div className="flex items-center gap-3">
@@ -295,7 +349,7 @@ export function AppShell({
             <div className="flex items-center gap-2 text-xs text-[#8b959e]">
               <button
                 type="button"
-                onClick={() => go(isCompany ? "search-startups" : "dashboard")}
+                onClick={() => go("dashboard")}
                 className="font-semibold text-gray-500 transition hover:text-[#111827]"
               >
                 StartIn
@@ -306,14 +360,103 @@ export function AppShell({
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => go("notifications")}
-              title="Notificações"
-              className="relative rounded-lg p-2 text-[#687681] transition hover:bg-[#f2f5f7]"
+            <div
+              className="relative"
+              onMouseEnter={handleNotifMouseEnter}
+              onMouseLeave={handleNotifMouseLeave}
             >
-              <Bell size={18} />
-              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FEC908]" />
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNotifPreviewOpen(false);
+                  go("notifications");
+                }}
+                title="Notificações"
+                className="relative rounded-lg p-2 text-[#687681] transition hover:bg-[#f2f5f7] hover:text-[#111827]"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#FEC908] px-1 text-[10px] font-black leading-none text-[#111827] shadow-xs">
+                    {unreadBadgeLabel}
+                  </span>
+                )}
+              </button>
+
+              {notifPreviewOpen && (
+                <div className="absolute right-0 top-11 z-50 w-80 overflow-hidden rounded-2xl border border-[#e3e8ec] bg-white shadow-xl">
+                  <div className="flex items-center justify-between border-b border-[#edf1f4] bg-[#f8fafc] px-4 py-3">
+                    <span className="text-xs font-extrabold text-[#111827]">
+                      Últimas notificações
+                    </span>
+                    {unreadCount > 0 ? (
+                      <span className="rounded-full bg-[#FEC908] px-2 py-0.5 text-[10px] font-extrabold text-[#111827]">
+                        {unreadBadgeLabel} {unreadCount === 1 ? "nova" : "novas"}
+                      </span>
+                    ) : (
+                      <span className="text-[10.5px] font-semibold text-[#7a8792]">
+                        Tudo visto
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="divide-y divide-[#f0f3f6]">
+                    {latestThreeNotifications.length > 0 ? (
+                      latestThreeNotifications.map((n) => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          onClick={() => {
+                            setNotifPreviewOpen(false);
+                            if (onNotificationClick) {
+                              onNotificationClick(n);
+                            } else {
+                              go("notifications");
+                            }
+                          }}
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-[#f6f9fc] ${
+                            !n.read ? "bg-[#fffdf4]" : "bg-white"
+                          }`}
+                        >
+                          <span
+                            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                              !n.read ? "bg-[#FEC908]" : "bg-gray-200"
+                            }`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-extrabold text-[#111827]">
+                              {n.title}
+                            </p>
+                            <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-[#657582]">
+                              {n.description}
+                            </p>
+                            <span className="mt-1 block text-[10px] font-semibold text-[#9aa5ad]">
+                              {n.timeAgo}
+                            </span>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-6 text-center text-xs text-[#7a8792]">
+                        Nenhuma notificação recente neste perfil.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-[#edf1f4] bg-[#f8fafc] p-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotifPreviewOpen(false);
+                        go("notifications");
+                      }}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-extrabold text-[#111827] transition hover:bg-white"
+                    >
+                      Ver todas as notificações <ArrowRight size={13} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="h-7 w-px bg-[#e7ebee]" />
 
             <div className="relative" ref={profileDropdownRef}>
@@ -367,6 +510,18 @@ export function AppShell({
                   </div>
 
                   <div className="p-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        go("dashboard");
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+                    >
+                      <HomeIcon size={15} className="text-[#111827]" />
+                      Home
+                    </button>
+
                     {isCompany && (
                       <button
                         type="button"
@@ -457,20 +612,20 @@ export function AppShell({
                           <SlidersHorizontal size={15} className="text-[#111827]" />
                           Preferências de matching
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileMenuOpen(false);
+                            go("account");
+                          }}
+                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+                        >
+                          <UserRound size={15} className="text-[#111827]" />
+                          Conta e acesso
+                        </button>
                       </>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileMenuOpen(false);
-                        go("account");
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
-                    >
-                      <UserRound size={15} className="text-[#111827]" />
-                      Conta e acesso
-                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -482,17 +637,19 @@ export function AppShell({
                       <SettingsIcon size={15} className="text-[#111827]" />
                       Configurações
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileMenuOpen(false);
-                        go("assistant");
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
-                    >
-                      <Bot size={15} className="text-[#111827]" />
-                      Assistente IA
-                    </button>
+                    {!isCompany && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          go("assistant");
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+                      >
+                        <Bot size={15} className="text-[#111827]" />
+                        Assistente IA
+                      </button>
+                    )}
                   </div>
 
                   <div className="border-t border-[#edf1f4] p-2">
