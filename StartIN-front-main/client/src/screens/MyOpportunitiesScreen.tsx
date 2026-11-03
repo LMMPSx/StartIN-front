@@ -18,8 +18,16 @@ import {
   Rocket,
   Search,
   Sparkles,
+  X,
 } from "@/icons";
-import { BackButton, Field, PageTitle, PrimaryButton, TextAreaField } from "@/components/startin/CommonUI";
+import {
+  AiPromptTutorialGuide,
+  BackButton,
+  Field,
+  PageTitle,
+  PrimaryButton,
+  TextAreaField,
+} from "@/components/startin/CommonUI";
 import {
   api,
   getSession,
@@ -31,6 +39,7 @@ import {
 } from "@/lib/api";
 import type { Screen } from "@/types/startin";
 import { formatOppType, getBadgeColorByType, getInitials } from "@/utils/formatters";
+import { COMPANY_SECTOR_AREAS, SUGGESTED_COMPANY_TOPICS } from "./OnboardingScreen";
 
 type SortOption = "match-desc" | "match-asc" | "name-asc" | "name-desc";
 
@@ -39,34 +48,69 @@ type SortOption = "match-desc" | "match-asc" | "name-asc" | "name-desc";
 // ==========================================
 export function MyOpportunities({
   go,
+  companyId,
   onSelectOpportunity,
   onEditOpportunity,
 }: {
   go: (s: Screen) => void;
+  companyId?: number;
   onSelectOpportunity?: (o: OpportunityItem) => void;
   onEditOpportunity?: (o: OpportunityItem) => void;
 }) {
   const [opps, setOpps] = useState<OpportunityItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const session = getSession();
+  const effectiveCompanyId = companyId ?? session?.companyId;
 
   useEffect(() => {
-    api
-      .getOpportunities(undefined, undefined, session?.companyId)
-      .then((res) => {
-        if (res.length > 0) {
-          setOpps(res);
-        } else {
-          return api.getOpportunities().then((all) => {
-            const corporate = all.filter((o) => {
-              const t = formatOppType(o.type);
-              return t === "POC" || t === "Primeira Compra" || t === "Compra";
-            });
-            setOpps(corporate);
-          });
+    let active = true;
+
+    const loadCompanyOpps = async () => {
+      let resolvedId = effectiveCompanyId;
+
+      // Se não houver companyId direto, resolve via userId da sessão
+      if (!resolvedId && session?.userId) {
+        try {
+          const comp = await api.getCompanyByUser(session.userId);
+          if (comp?.id) {
+            resolvedId = comp.id;
+          }
+        } catch {
+          // ignore
         }
-      })
-      .catch(() => {});
-  }, [session?.companyId]);
+      }
+
+      if (!resolvedId) {
+        if (active) {
+          setOpps([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (active) setLoading(true);
+      try {
+        const res = await api.getOpportunities(undefined, undefined, resolvedId);
+        if (active) {
+          // Restringe estritamente por ID: exibe APENAS oportunidades da empresa logada
+          const mine = (res || []).filter(
+            (o) => o.companyId && String(o.companyId) === String(resolvedId)
+          );
+          setOpps(mine);
+        }
+      } catch {
+        if (active) setOpps([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadCompanyOpps();
+
+    return () => {
+      active = false;
+    };
+  }, [effectiveCompanyId, session?.userId]);
 
   const publishedCount = opps.filter((o) => !o.status || o.status === "PUBLICADA").length;
   const reviewCount = opps.filter((o) => o.status === "EM_ANALISE").length;
@@ -110,7 +154,11 @@ export function MyOpportunities({
           <span className="text-[11px] text-[#7c8993]">Clique em um item para editar</span>
         </div>
         <div className="mt-4 space-y-3">
-          {opps.length > 0 ? (
+          {loading ? (
+            <div className="py-8 text-center text-xs font-semibold text-[#7c8993]">
+              Carregando suas oportunidades corporativas...
+            </div>
+          ) : opps.length > 0 ? (
             opps.map((o) => (
               <div
                 key={o.id}
@@ -176,6 +224,9 @@ export function MyOpportunities({
               <p className="text-xs font-bold text-[#234666]">
                 Nenhuma POC ou Compra lançada ainda
               </p>
+              <p className="mt-1 text-[11px] text-[#88949e]">
+                Suas oportunidades corporativas publicadas aparecerão aqui para acompanhamento e edição.
+              </p>
               <div className="mt-4 flex justify-center">
                 <PrimaryButton onClick={() => go("create-opportunity")}>
                   <Plus size={14} /> Criar primeira POC / Compra
@@ -195,11 +246,15 @@ export function MyOpportunities({
 export function CreateForm({
   go,
   opportunity = false,
+  companyId,
+  companyName,
   editingOpportunity = null,
   onNotificationTrigger,
 }: {
   go: (s: Screen) => void;
   opportunity?: boolean;
+  companyId?: number;
+  companyName?: string;
   editingOpportunity?: OpportunityItem | null;
   onNotificationTrigger?: () => void;
 }) {
@@ -225,7 +280,18 @@ export function CreateForm({
     return ["IA", "SaaS", "B2B", "Dados"];
   });
   const [saving, setSaving] = useState(false);
+  const [authError, setAuthError] = useState("");
   const session = getSession();
+  const effectiveCompanyId = companyId ?? session?.companyId;
+  const effectiveCompanyName = companyName ?? session?.name;
+
+  // Verificação de permissão: impede que uma empresa edite oportunidades criadas por outra
+  const isUnauthorized = Boolean(
+    isEditing &&
+      editingOpportunity?.companyId &&
+      effectiveCompanyId &&
+      String(editingOpportunity.companyId) !== String(effectiveCompanyId)
+  );
 
   useEffect(() => {
     if (editingOpportunity) {
@@ -260,8 +326,24 @@ export function CreateForm({
   };
 
   const handlePublish = async () => {
+    if (isUnauthorized) {
+      setAuthError("Você não tem autorização para editar uma oportunidade criada por outra empresa.");
+      return;
+    }
+
     setSaving(true);
+    setAuthError("");
     try {
+      let resolvedCompanyId = effectiveCompanyId;
+      if (!resolvedCompanyId && session?.userId) {
+        try {
+          const comp = await api.getCompanyByUser(session.userId);
+          if (comp?.id) resolvedCompanyId = comp.id;
+        } catch {
+          // ignore
+        }
+      }
+
       if (isEditing && editingOpportunity) {
         await api.updateOpportunity(editingOpportunity.id, {
           type: toBackendType(selectedType),
@@ -270,7 +352,7 @@ export function CreateForm({
           tags: selectedTags.join(" • "),
           meta: meta || "Aberta · Brasil · Remoto",
           status,
-          companyId: editingOpportunity.companyId || session?.companyId,
+          companyId: editingOpportunity.companyId || resolvedCompanyId,
         });
       } else if (opportunity) {
         await api.createOpportunity({
@@ -281,8 +363,8 @@ export function CreateForm({
           tags: selectedTags.join(" • "),
           meta: meta || "Aberta · Brasil · Remoto",
           status: "PUBLICADA",
-          companyId: session?.companyId,
-          companyName: session?.name,
+          companyId: resolvedCompanyId,
+          companyName: effectiveCompanyName,
         });
       } else {
         await api.createCompany({
@@ -294,11 +376,11 @@ export function CreateForm({
         });
       }
       onNotificationTrigger?.();
-    } catch {
-      // ignora erro local se ocorrer
+      setPublished(true);
+    } catch (err: any) {
+      setAuthError(err?.message || "Erro ao salvar oportunidade corporativa.");
     } finally {
       setSaving(false);
-      setPublished(true);
     }
   };
 
@@ -350,7 +432,17 @@ export function CreateForm({
             : "POCs e Primeira Compra são direcionadas a startups em Validação; Compras Corporativas são direcionadas a startups em Tração."
         }
       />
-      <section className="mt-8 rounded-2xl border border-[#e2e7eb] bg-white p-6 md:p-8">
+      {isUnauthorized && (
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-700">
+          Aviso de permissão: Esta oportunidade pertence a outra empresa parceira e você não possui permissão para alterá-la.
+        </div>
+      )}
+      {authError && (
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-700">
+          {authError}
+        </div>
+      )}
+      <section className="mt-6 rounded-2xl border border-[#e2e7eb] bg-white p-6 md:p-8">
         <div className="grid gap-6 md:grid-cols-2">
           <div>
             <span className="mb-2 block text-xs font-semibold text-[#203754]">
@@ -461,7 +553,7 @@ export function CreateForm({
               Cancelar
             </PrimaryButton>
           )}
-          <PrimaryButton disabled={saving} onClick={handlePublish}>
+          <PrimaryButton disabled={saving || isUnauthorized} onClick={handlePublish}>
             {isEditing ? "Salvar alterações" : "Publicar oportunidade"}{" "}
             <ArrowRight size={16} />
           </PrimaryButton>
@@ -1857,7 +1949,7 @@ export function CompanyProfileScreen({
     phone: session?.phone || "",
     avatarUrl: session?.avatarUrl || "",
     type: "Empresa",
-    sector: "Saúde / Operações Corporativas",
+    sector: "Operações Corporativas & Tecnologia",
     location: "Brasil",
     cnpj: session?.cnpj || "",
     website: "",
@@ -1867,13 +1959,64 @@ export function CompanyProfileScreen({
     preferredStage: "Tração / Validação",
     operationMode: "POC + Compra",
   });
+
+  const [selectedSector, setSelectedSector] = useState<string>(() => {
+    if (form.sector && (COMPANY_SECTOR_AREAS as readonly string[]).includes(form.sector)) {
+      return form.sector;
+    }
+    return form.sector ? "Outro" : COMPANY_SECTOR_AREAS[0];
+  });
+  const [customSector, setCustomSector] = useState<string>(() => {
+    if (form.sector && !(COMPANY_SECTOR_AREAS as readonly string[]).includes(form.sector)) {
+      return form.sector;
+    }
+    return "";
+  });
+
   const [saving, setSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Estados da IA para estruturação de demandas e tópicos
+  const [enhancingDemands, setEnhancingDemands] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiEnhanced, setAiEnhanced] = useState(false);
+  const [aiExtractedTags, setAiExtractedTags] = useState<string[]>([]);
+  const [customTagInput, setCustomTagInput] = useState("");
+
+  const effectiveSector =
+    selectedSector === "Outro"
+      ? customSector.trim() || "Operações Corporativas & Tecnologia"
+      : selectedSector;
+
   useEffect(() => {
+    const applyCompanyData = (c: CompanyProfileData) => {
+      setForm((prev) => ({ ...prev, ...c }));
+      if (c.sector) {
+        if ((COMPANY_SECTOR_AREAS as readonly string[]).includes(c.sector)) {
+          setSelectedSector(c.sector);
+          setCustomSector("");
+        } else {
+          setSelectedSector("Outro");
+          setCustomSector(c.sector);
+        }
+      }
+      if (c.demands && c.demands.length > 30) {
+        setAiEnhanced(true);
+      }
+      if (c.tags) {
+        const parsed = c.tags
+          .split(/[,•]/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+        if (parsed.length > 0) {
+          setAiExtractedTags(parsed);
+        }
+      }
+    };
+
     if (company) {
-      setForm((prev) => ({ ...prev, ...company }));
+      applyCompanyData(company);
     } else {
       const activeId = companyId || session?.companyId;
       const loader = activeId
@@ -1883,7 +2026,7 @@ export function CompanyProfileScreen({
         : api.getDefaultCompany();
       loader
         .then((c) => {
-          if (c) setForm((prev) => ({ ...prev, ...c }));
+          if (c) applyCompanyData(c);
         })
         .catch(() => {});
     }
@@ -1891,6 +2034,122 @@ export function CompanyProfileScreen({
 
   const setField = (key: keyof CompanyProfileData) => (val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
+
+  // Tags ativas da empresa
+  const activeTagsList = useMemo(() => {
+    if (!form.tags) return [];
+    return form.tags
+      .split(/[,•]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }, [form.tags]);
+
+  // Tópicos sugeridos com base no setor selecionado
+  const suggestedSectorTopics = useMemo(() => {
+    return (
+      SUGGESTED_COMPANY_TOPICS[effectiveSector] ||
+      SUGGESTED_COMPANY_TOPICS.default || [
+        "Automação de Processos",
+        "IA & Dados",
+        "Integração ERP/Sistemas",
+        "Analytics & BI",
+        "Segurança & LGPD",
+      ]
+    );
+  }, [effectiveSector]);
+
+  // Mescla tópicos sugeridos com todas as tags ativas (IA ou adicionadas manualmente)
+  const allMergedTopics = useMemo(() => {
+    const list = [...suggestedSectorTopics];
+    activeTagsList.forEach((tag) => {
+      if (!list.some((t) => t.toLowerCase() === tag.toLowerCase())) {
+        list.push(tag);
+      }
+    });
+    return list;
+  }, [suggestedSectorTopics, activeTagsList]);
+
+  const handleToggleTag = (tag: string) => {
+    const exists = activeTagsList.some(
+      (t) => t.toLowerCase() === tag.toLowerCase()
+    );
+    let updated: string[];
+    if (exists) {
+      updated = activeTagsList.filter(
+        (t) => t.toLowerCase() !== tag.toLowerCase()
+      );
+    } else {
+      updated = [...activeTagsList, tag];
+    }
+    setForm((prev) => ({ ...prev, tags: updated.join(", ") }));
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const updated = activeTagsList.filter(
+      (t) => t.toLowerCase() !== tagToRemove.toLowerCase()
+    );
+    setForm((prev) => ({ ...prev, tags: updated.join(", ") }));
+  };
+
+  const handleAddCustomTag = () => {
+    if (!customTagInput.trim()) return;
+    const clean = customTagInput.trim();
+    if (
+      !activeTagsList.some((t) => t.toLowerCase() === clean.toLowerCase())
+    ) {
+      const updated = [...activeTagsList, clean];
+      setForm((prev) => ({ ...prev, tags: updated.join(", ") }));
+    }
+    setCustomTagInput("");
+  };
+
+  const handleEnhanceDemandsWithAI = async () => {
+    setAiError("");
+    if (!form.demands || form.demands.trim().length < 10) {
+      setAiError(
+        "Descreva ao menos uma breve explicação dos desafios operacionais da sua empresa antes de melhorar com a IA."
+      );
+      return;
+    }
+    setEnhancingDemands(true);
+    try {
+      const res = await api.enhanceCompanyDemandsAI({
+        text: form.demands,
+        sector: effectiveSector,
+        companyName: form.name,
+        operationMode: form.operationMode,
+      });
+
+      const extracted =
+        Array.isArray(res.tags) && res.tags.length > 0
+          ? res.tags
+          : (res.technologies || effectiveSector)
+              .split(/[,•]/)
+              .map((t) => t.trim())
+              .filter(Boolean);
+
+      setAiExtractedTags(extracted);
+
+      // Unir as novas tags extraídas com as existentes sem duplicatas
+      const combined = Array.from(new Set([...extracted, ...activeTagsList]));
+
+      setForm((prev) => ({
+        ...prev,
+        sector: effectiveSector,
+        demands: res.enhancedText || prev.demands,
+        tags: combined.join(", "),
+      }));
+      setAiEnhanced(true);
+      setSavedNotice(
+        "Desafios e demandas estruturados com IA! Tags e tópicos atualizados para o matchmaking."
+      );
+      setTimeout(() => setSavedNotice(""), 4500);
+    } catch (err: any) {
+      setAiError(err.message || "Falha ao melhorar os desafios da empresa com IA.");
+    } finally {
+      setEnhancingDemands(false);
+    }
+  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1907,9 +2166,15 @@ export function CompanyProfileScreen({
       try {
         const targetId = form.id || session?.companyId || 1;
         if (session?.userId) {
-          await api.updateUser(session.userId, { avatarUrl: dataUrl }).catch(() => {});
+          await api
+            .updateUser(session.userId, { avatarUrl: dataUrl })
+            .catch(() => {});
         }
-        const updated = await api.updateCompany(targetId, { ...form, avatarUrl: dataUrl });
+        const updated = await api.updateCompany(targetId, {
+          ...form,
+          sector: effectiveSector,
+          avatarUrl: dataUrl,
+        });
         setForm(updated);
         onCompanyUpdated?.(updated);
         setSavedNotice("Foto da empresa atualizada com sucesso!");
@@ -1922,19 +2187,30 @@ export function CompanyProfileScreen({
   const handleSave = async () => {
     setSaving(true);
     setSavedNotice("");
+    setAiError("");
     try {
       const targetId = form.id || session?.companyId || 1;
+      const payload: CompanyProfileData = {
+        ...form,
+        sector: effectiveSector,
+        description: "",
+      };
+
       if (session?.userId) {
-        await api.updateUser(session.userId, {
-          name: form.name,
-          phone: form.phone,
-          cnpj: form.cnpj,
-          avatarUrl: form.avatarUrl,
-        }).catch(() => {});
+        await api
+          .updateUser(session.userId, {
+            name: payload.name,
+            phone: payload.phone,
+            cnpj: payload.cnpj,
+            avatarUrl: payload.avatarUrl,
+          })
+          .catch(() => {});
       }
-      const updated = await api.updateCompany(targetId, { ...form, description: "" });
+
+      const updated = await api.updateCompany(targetId, payload);
       setForm(updated);
       onCompanyUpdated?.(updated);
+
       const current = getSession();
       if (current) {
         saveSession({
@@ -1945,6 +2221,7 @@ export function CompanyProfileScreen({
           avatarUrl: updated.avatarUrl || current.avatarUrl,
         });
       }
+
       setSavedNotice("Perfil da empresa atualizado com sucesso no banco de dados!");
       onNotificationTrigger?.();
       setTimeout(() => setSavedNotice(""), 3500);
@@ -1960,7 +2237,7 @@ export function CompanyProfileScreen({
       <BackButton label="Voltar para Home" onClick={() => go("dashboard")} />
       <PageTitle
         title="Minha empresa (Conta & Perfil)"
-        description="Mantenha CNPJ, telefone, contatos e demandas da sua organização atualizados para o matching da IA."
+        description="Mantenha CNPJ, telefone, contatos, demandas de POC/Compra e tópicos da sua organização atualizados para o matching da IA."
       />
 
       <section className="mt-8 rounded-2xl border border-[#e2e7eb] bg-white p-6 md:p-8">
@@ -1988,7 +2265,8 @@ export function CompanyProfileScreen({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#111827] text-white shadow"
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#111827] text-white shadow transition hover:bg-black"
+                title="Alterar foto da empresa"
               >
                 <Camera size={13} />
               </button>
@@ -2017,17 +2295,52 @@ export function CompanyProfileScreen({
           </button>
         </div>
 
+        {/* Informações Básicas da Empresa */}
         <div className="grid gap-5 md:grid-cols-2">
           <Field label="Nome da empresa" value={form.name} onChange={setField("name")} />
-          <Field label="Setor de atuação" value={form.sector || ""} onChange={setField("sector")} />
 
-          <div className="md:col-span-2">
-            <TextAreaField
-              label="Demandas abertas para POC, Primeira Compra e Compra"
-              value={form.demands || ""}
-              onChange={setField("demands")}
-              placeholder="Descreva os desafios e problemas que deseja resolver com soluções de startups."
-            />
+          {/* Setor de atuação com opção Outro (mesma estrutura da startup) */}
+          <div>
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold text-[#203754]">
+                Setor de atuação
+              </span>
+              {selectedSector === "Outro" ? (
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Digite o setor corporativo da empresa..."
+                    value={customSector}
+                    onChange={(e) => setCustomSector(e.target.value)}
+                    className="h-11 w-full rounded-lg border border-[#111827] bg-white pl-3 pr-24 text-xs font-semibold text-[#111827] outline-none focus:border-[#111827] placeholder:font-normal placeholder:text-[#98a2ab]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSector(COMPANY_SECTOR_AREAS[0]);
+                      setCustomSector("");
+                    }}
+                    className="absolute right-1.5 inline-flex items-center gap-1 rounded-md bg-gray-100 px-2.5 py-1.5 text-[11px] font-bold text-[#111827] transition hover:bg-gray-200"
+                    title="Voltar para a lista de setores"
+                  >
+                    Ver lista <ChevronDown size={12} />
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={selectedSector}
+                  onChange={(e) => setSelectedSector(e.target.value)}
+                  className="h-11 w-full rounded-lg border border-[#d9e1e7] bg-white px-3 text-xs font-semibold text-[#111827] outline-none focus:border-[#111827]"
+                >
+                  {COMPANY_SECTOR_AREAS.map((sec) => (
+                    <option key={sec} value={sec}>
+                      {sec}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </label>
           </div>
 
           <Field label="Localização" value={form.location || ""} onChange={setField("location")} />
@@ -2040,50 +2353,244 @@ export function CompanyProfileScreen({
           <Field label="CNPJ" value={form.cnpj || ""} onChange={setField("cnpj")} />
           <Field label="Site" value={form.website || ""} onChange={setField("website")} />
 
-          <div className="md:col-span-2">
-            <span className="mb-2 block text-xs font-semibold text-[#203754]">
-              Modalidade preferencial
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {["POC", "Primeira Compra", "Compra", "POC + Compra"].map((m) => (
+          {/* =====================================================================
+              DESAFIOS E DEMANDAS COM IA (MESMA ESTRUTURA DA STARTUP)
+          ===================================================================== */}
+          <div className="md:col-span-2 mt-3 pt-6 border-t border-[#edf0f2]">
+            {/* Mini tutorial com gradiente explicando o que colocar para a IA */}
+            <AiPromptTutorialGuide role="company" />
+
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-bold text-[#203754]">
+                Desafios operacionais e demandas abertas (estruturadas para o matchmaking da IA)
+              </span>
+              {aiEnhanced ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f7ee] px-3 py-1 text-[11px] font-bold text-[#166d48]">
+                  <Check size={12} /> Demandas estruturadas pela IA para o matchmaking
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#fff6d6] px-3 py-1 text-[11px] font-bold text-[#854d0e]">
+                  <Sparkles size={12} /> Estruturação com IA recomendada
+                </span>
+              )}
+            </div>
+
+            <textarea
+              rows={7}
+              placeholder="Descreva os problemas operacionais, gargalos tecnológicos ou processos que sua empresa busca resolver ou testar com startups. Em seguida, clique em 'Melhorar desafios e demandas com IA' para organizar os tópicos do matchmaking."
+              value={form.demands || ""}
+              onChange={(e) => setField("demands")(e.target.value)}
+              className="w-full rounded-xl border border-[#d9e1e7] bg-[#fcfdfe] p-4 text-xs leading-6 text-[#111827] outline-none transition focus:border-[#111827]"
+            />
+
+            {aiError && (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
+                {aiError}
+              </div>
+            )}
+
+            {/* Barra de ação com botão de melhorar com IA */}
+            <div className="mt-3 flex flex-col justify-between gap-3 rounded-xl border border-[#e3e8ee] bg-[#f8fafc] p-4 sm:flex-row sm:items-center">
+              <div className="text-xs leading-5 text-[#5b6b79]">
+              </div>
+              <button
+                type="button"
+                disabled={enhancingDemands}
+                onClick={handleEnhanceDemandsWithAI}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#111827] px-5 py-3 text-xs font-extrabold text-[#FEC908] shadow-sm transition hover:bg-black disabled:opacity-60"
+              >
+                <Sparkles size={15} />
+                {enhancingDemands
+                  ? "Estruturando demandas com IA..."
+                  : aiEnhanced
+                  ? "Reestruturar demandas com IA"
+                  : "Melhorar desafios e demandas com IA"}
+              </button>
+            </div>
+
+            {/* Tags e Tecnologias extraídas automaticamente pela IA */}
+            {aiExtractedTags.length > 0 && (
+              <div className="mt-3.5 rounded-xl border border-[#dce6ef] bg-white p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
+                  Tags e tecnologias identificadas automaticamente pela IA na demanda:
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {aiExtractedTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-[#111827] px-3 py-1 text-[11px] font-bold text-[#FEC908]"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* =====================================================================
+              TÓPICOS E TECNOLOGIAS DE INTERESSE (INTEGRADO COM TEXTO E SUGESTÕES)
+          ===================================================================== */}
+          <div className="md:col-span-2 mt-4 pt-6 border-t border-[#edf0f2]">
+            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+              <div>
+                <h3 className="text-sm font-extrabold text-[#111827]">
+                  Tópicos e Tecnologias de Interesse (Tags de Matchmaking)
+                </h3>
+                <p className="mt-1 text-xs text-[#768692]">
+                  Esses tópicos definem o cálculo de compatibilidade tecnológica (30%) com as startups.
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold text-[#111827]">
+                {activeTagsList.length} tópicos ativos
+              </span>
+            </div>
+
+            {/* Bloco Unificado de Tópicos e Tecnologias (Sugeridos + IA + Adicionados) */}
+            <div className="mt-4">
+              <span className="text-xs font-bold text-[#50697f]">
+                Tópicos e tecnologias para {effectiveSector} (clique para ativar/desativar):
+              </span>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {allMergedTopics.map((topic) => {
+                  const isSelected = activeTagsList.some(
+                    (t) => t.toLowerCase() === topic.toLowerCase()
+                  );
+                  return (
+                    <button
+                      key={topic}
+                      type="button"
+                      onClick={() => handleToggleTag(topic)}
+                      className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+                        isSelected
+                          ? "bg-[#111827] text-[#FEC908] shadow-xs"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                      title={
+                        isSelected
+                          ? "Tópico ativo no perfil. Clique para desativar."
+                          : "Tópico inativo. Clique para ativar."
+                      }
+                    >
+                      {isSelected ? <Check size={12} strokeWidth={3} /> : <Plus size={12} />}
+                      <span>{topic}</span>
+                      {isSelected && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveTag(topic);
+                          }}
+                          className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-white/20 transition"
+                          title="Remover tópico"
+                        >
+                          <X size={11} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Campo para adicionar novo tópico / tecnologia diretamente no bloco de cima */}
+              <div className="mt-3.5 flex max-w-md items-center gap-2">
+                <input
+                  type="text"
+                  value={customTagInput}
+                  onChange={(e) => setCustomTagInput(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && (e.preventDefault(), handleAddCustomTag())
+                  }
+                  placeholder="Adicionar novo tópico ou tecnologia (ex: Gêmeos Digitais, Cibersegurança)..."
+                  className="h-9 flex-1 rounded-lg border border-[#d9e1e7] bg-white px-3 text-xs outline-none focus:border-[#111827]"
+                />
                 <button
-                  key={m}
                   type="button"
-                  onClick={() => setField("operationMode")(m)}
-                  className={`rounded-lg px-4 py-2 text-xs font-bold transition ${
-                    form.operationMode === m
-                      ? "bg-[#111827] text-white"
-                      : "bg-[#f3f6f8] text-[#486680]"
-                  }`}
+                  onClick={handleAddCustomTag}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#111827] px-3.5 text-xs font-bold text-white transition hover:bg-black"
                 >
-                  {m}
+                  <Plus size={13} /> Adicionar
                 </button>
-              ))}
+              </div>
             </div>
           </div>
 
-          <div className="md:col-span-2">
-            <Field
-              label="Tecnologias e áreas de interesse (Tags)"
-              value={form.tags || ""}
-              onChange={setField("tags")}
-              placeholder="IA, SaaS, B2B, Dados, Automação"
-            />
+          {/* =====================================================================
+              MODALIDADE PREFERENCIAL
+          ===================================================================== */}
+          <div className="md:col-span-2 mt-4 pt-6 border-t border-[#edf0f2]">
+            <span className="mb-2 block text-xs font-semibold text-[#203754]">
+              Modalidade preferencial de contratação de inovação
+            </span>
+            <div className="flex flex-wrap gap-2.5">
+              {(["POC", "Primeira Compra", "Compra", "POC + Compra"] as const).map((m) => {
+                const active = form.operationMode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setField("operationMode")(m)}
+                    className={`rounded-xl px-4 py-2.5 text-xs font-bold transition flex items-center gap-1.5 ${
+                      active
+                        ? "bg-[#111827] text-[#FEC908] shadow-sm"
+                        : "bg-gray-100 text-[#486680] hover:bg-gray-200"
+                    }`}
+                  >
+                    {active && <Check size={13} strokeWidth={2.5} />}
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="md:col-span-2">
-            <Field
-              label="Estágio desejado para as startups"
-              value={form.preferredStage || ""}
-              onChange={setField("preferredStage")}
-              placeholder="Validação, MVP ou Tração"
-            />
+          {/* =====================================================================
+              ESTÁGIO DESEJADO PARA AS STARTUPS
+          ===================================================================== */}
+          <div className="md:col-span-2 mt-4 pt-6 border-t border-[#edf0f2]">
+            <span className="mb-2 block text-xs font-semibold text-[#203754]">
+              Estágio desejado para as startups parceiras
+            </span>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { stage: "Validação", desc: "Startups em validação e provas de conceito (POCs - TRL 1-6)" },
+                { stage: "Tração", desc: "Startups maduras para compras corporativas diretas (TRL 7-9)" },
+                { stage: "Tração / Validação", desc: "Aberto a provas de conceito (POCs) e contratações em escala" },
+              ].map(({ stage, desc }) => {
+                const active = (form.preferredStage || "Tração / Validação") === stage;
+                return (
+                  <button
+                    key={stage}
+                    type="button"
+                    onClick={() => setField("preferredStage")(stage)}
+                    className={`rounded-xl border-2 p-3 text-left transition ${
+                      active
+                        ? "border-[#111827] bg-[#111827] text-white"
+                        : "border-[#e2e8f0] bg-white text-[#111827] hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold">{stage}</span>
+                      {active && <Check size={14} className="text-[#FEC908]" />}
+                    </div>
+                    <span
+                      className={`mt-1 block text-[11px] ${
+                        active ? "text-gray-300" : "text-[#64748b]"
+                      }`}
+                    >
+                      {desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        <div className="mt-8 flex justify-end">
+        <div className="mt-9 flex justify-end border-t border-[#edf0f2] pt-6">
           <PrimaryButton disabled={saving} onClick={handleSave}>
-            Salvar perfil da empresa <Check size={16} />
+            {saving ? "Salvando alterações..." : "Salvar perfil da empresa"} <Check size={16} />
           </PrimaryButton>
         </div>
       </section>

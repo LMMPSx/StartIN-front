@@ -74,23 +74,25 @@ export function AuthShell({
 }) {
   return (
     <div className="startin-auth-shell">
-      <section className="startin-auth-hero hidden lg:flex lg:flex-col lg:justify-between">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 text-[24px] font-black tracking-[.02em]">
-            <span className="text-[#111827]">Start</span>
-            <span className="text-[#FEC908]">In</span>
+      <section className="startin-auth-hero hidden lg:flex lg:flex-col lg:justify-between h-full min-h-screen">
+        <div className="relative z-10 w-full max-w-[440px] mx-auto mt-2 md:mt-6 mb-auto">
+          <div className="mb-5 flex justify-center">
+            <div className="relative flex items-center justify-center max-w-[210px] transition hover:scale-105">
+              <img
+                src="/icons/startin-logo-transparent.png"
+                alt="StartIn Marca Oficial"
+                className="w-full h-auto object-contain drop-shadow-sm"
+              />
+            </div>
           </div>
-          <div className="mt-20 max-w-[420px]">
-            <OrbitMark />
-            <h1 className="mt-8 text-[44px] font-black leading-[1.04] tracking-[-.05em] text-[#111827]">
-              {sideTitle}
-            </h1>
-            <p className="mt-6 max-w-[360px] text-[15px] font-medium leading-6 text-[#4b5563]">
-              {sideText}
-            </p>
-          </div>
+          <h1 className="text-[34px] xl:text-[38px] font-black leading-[1.08] tracking-[-.05em] text-[#111827]">
+            {sideTitle}
+          </h1>
+          <p className="mt-4 max-w-[390px] text-[14px] xl:text-[15px] font-medium leading-6 text-[#4b5563]">
+            {sideText}
+          </p>
         </div>
-        <div className="relative z-10 text-xs font-medium text-[#6b7280]">
+        <div className="relative z-10 text-xs font-medium text-[#6b7280] pb-6 pt-8">
           StartIn © 2026 · O ecossistema para os próximos grandes começos.
         </div>
         <div className="absolute -bottom-44 -right-28 h-[470px] w-[470px] rounded-full border-[54px] border-[#f1f5f9]" />

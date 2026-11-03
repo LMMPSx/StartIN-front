@@ -12,6 +12,7 @@ import {
 export type AccountType = "STARTUP" | "COMPANY";
 
 export type Screen =
+  | "landing"
   | "login"
   | "signup"
   | "recovery"

@@ -644,6 +644,29 @@ export const api = {
       targetAudience: stripMarkdownToPlainText(res.targetAudience),
     })),
 
+  enhanceCompanyDemandsAI: (data: {
+    text: string;
+    sector?: string;
+    companyName?: string;
+    operationMode?: string;
+  }) =>
+    request<{
+      enhancedText: string;
+      tags: string[];
+      technologies: string;
+      priorityTopics: string[];
+      howItWorks: string;
+      impact: string;
+    }>("/ai/enhance-company-demands", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }).then((res) => ({
+      ...res,
+      enhancedText: stripMarkdownToPlainText(res.enhancedText),
+      howItWorks: stripMarkdownToPlainText(res.howItWorks),
+      impact: stripMarkdownToPlainText(res.impact),
+    })),
+
   verifyTractionPdfAI: (data: {
     fileName: string;
     fileBase64: string;

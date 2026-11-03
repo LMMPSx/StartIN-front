@@ -21,6 +21,7 @@ import {
   CreateForm,
   Dashboard,
   getLocalSavedOpportunities,
+  LandingScreen,
   Login,
   MatchDetail,
   MyOpportunities,
@@ -47,18 +48,80 @@ export default function Home() {
     session?.accountType === "COMPANY" ? "COMPANY" : "STARTUP";
 
   const [accountType, setAccountType] = useState<AccountType>(initialAccountType);
+  const [signupAccountType, setSignupAccountType] = useState<AccountType>("STARTUP");
+
+  // Preserva a tela ativa através de F5 / recarregamento do navegador
   const [screen, setScreen] = useState<Screen>(() => {
     const isAuth = Boolean(session || localStorage.getItem("startin-auth"));
-    if (!isAuth) return "login";
+    if (!isAuth) {
+      try {
+        const saved = sessionStorage.getItem("startin_active_screen") as Screen | null;
+        if (saved && ["login", "signup", "recovery", "reset", "verify", "landing"].includes(saved)) {
+          return saved;
+        }
+      } catch {}
+      return "landing";
+    }
+
+    try {
+      const saved = sessionStorage.getItem("startin_active_screen") as Screen | null;
+      if (saved) {
+        return saved;
+      }
+    } catch {}
+
     return "dashboard";
   });
+
   const [selectedScreen, setSelectedScreen] = useState<Screen>(screen);
-  const [selectedMatch, setSelectedMatch] = useState<MatchItem | null>(null);
-  const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityItem | null>(null);
-  const [editingOpportunity, setEditingOpportunity] = useState<OpportunityItem | null>(null);
-  const [assistantOpportunity, setAssistantOpportunity] = useState<OpportunityItem | null>(null);
-  const [selectedStartupMatch, setSelectedStartupMatch] = useState<StartupMatchItem | null>(null);
-  const [selectedCompanyMatch, setSelectedCompanyMatch] = useState<CompanyMatchItem | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<MatchItem | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("startin_selected_match");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityItem | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("startin_selected_opportunity");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [editingOpportunity, setEditingOpportunity] = useState<OpportunityItem | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("startin_editing_opportunity");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [assistantOpportunity, setAssistantOpportunity] = useState<OpportunityItem | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("startin_assistant_opportunity");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [selectedStartupMatch, setSelectedStartupMatch] = useState<StartupMatchItem | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("startin_selected_startup_match");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [selectedCompanyMatch, setSelectedCompanyMatch] = useState<CompanyMatchItem | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("startin_selected_company_match");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [profile, setProfile] = useState<StartupProfileData | null>(null);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfileData | null>(null);
@@ -129,8 +192,61 @@ export default function Home() {
   };
 
   useEffect(() => {
+    try {
+      sessionStorage.setItem("startin_active_screen", screen);
+    } catch {}
     setSelectedScreen(screen);
   }, [screen]);
+
+  useEffect(() => {
+    try {
+      if (selectedOpportunity) {
+        sessionStorage.setItem("startin_selected_opportunity", JSON.stringify(selectedOpportunity));
+      } else {
+        sessionStorage.removeItem("startin_selected_opportunity");
+      }
+    } catch {}
+  }, [selectedOpportunity]);
+
+  useEffect(() => {
+    try {
+      if (editingOpportunity) {
+        sessionStorage.setItem("startin_editing_opportunity", JSON.stringify(editingOpportunity));
+      } else {
+        sessionStorage.removeItem("startin_editing_opportunity");
+      }
+    } catch {}
+  }, [editingOpportunity]);
+
+  useEffect(() => {
+    try {
+      if (assistantOpportunity) {
+        sessionStorage.setItem("startin_assistant_opportunity", JSON.stringify(assistantOpportunity));
+      } else {
+        sessionStorage.removeItem("startin_assistant_opportunity");
+      }
+    } catch {}
+  }, [assistantOpportunity]);
+
+  useEffect(() => {
+    try {
+      if (selectedStartupMatch) {
+        sessionStorage.setItem("startin_selected_startup_match", JSON.stringify(selectedStartupMatch));
+      } else {
+        sessionStorage.removeItem("startin_selected_startup_match");
+      }
+    } catch {}
+  }, [selectedStartupMatch]);
+
+  useEffect(() => {
+    try {
+      if (selectedCompanyMatch) {
+        sessionStorage.setItem("startin_selected_company_match", JSON.stringify(selectedCompanyMatch));
+      } else {
+        sessionStorage.removeItem("startin_selected_company_match");
+      }
+    } catch {}
+  }, [selectedCompanyMatch]);
 
   useEffect(() => {
     const currentSession = getSession();
@@ -218,6 +334,9 @@ export default function Home() {
           .then((c) => {
             if (c) {
               setCompanyProfile(c);
+              if (currentSession && !currentSession.companyId && c.id) {
+                saveSession({ ...currentSession, companyId: c.id });
+              }
               refreshNotifications({ companyId: c.id, role: "COMPANY" });
             }
           })
@@ -231,6 +350,15 @@ export default function Home() {
   }, [authVersion, screen, refreshNotifications]);
 
   const handleLogout = () => {
+    try {
+      sessionStorage.removeItem("startin_active_screen");
+      sessionStorage.removeItem("startin_selected_opportunity");
+      sessionStorage.removeItem("startin_editing_opportunity");
+      sessionStorage.removeItem("startin_assistant_opportunity");
+      sessionStorage.removeItem("startin_selected_startup_match");
+      sessionStorage.removeItem("startin_selected_company_match");
+      sessionStorage.removeItem("startin_selected_match");
+    } catch {}
     clearSession();
     setProfile(null);
     setCompanyProfile(null);
@@ -243,10 +371,13 @@ export default function Home() {
     setSelectedStartupMatch(null);
     setSelectedCompanyMatch(null);
     setAuthVersion((v) => v + 1);
-    go("login");
+    go("landing");
   };
 
   const go = (next: Screen) => {
+    try {
+      sessionStorage.setItem("startin_active_screen", next);
+    } catch {}
     setScreen(next);
     setSelectedScreen(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -496,11 +627,29 @@ export default function Home() {
       .catch(() => {});
   };
 
+  if (screen === "landing") {
+    return (
+      <LandingScreen
+        go={go}
+        onSelectRole={(r) => {
+          setSignupAccountType(r);
+          go("signup");
+        }}
+      />
+    );
+  }
+
   if (["login", "signup", "recovery", "reset", "verify", "onboarding"].includes(screen)) {
     if (screen === "login")
       return <Login go={go} onAuthSuccess={() => setAuthVersion((v) => v + 1)} />;
     if (screen === "signup")
-      return <Signup go={go} onAuthSuccess={() => setAuthVersion((v) => v + 1)} />;
+      return (
+        <Signup
+          go={go}
+          initialAccountType={signupAccountType}
+          onAuthSuccess={() => setAuthVersion((v) => v + 1)}
+        />
+      );
     if (screen === "recovery")
       return <Recovery go={go} onSetRecoveryEmail={setRecoveryEmail} />;
     if (screen === "reset")
@@ -568,6 +717,7 @@ export default function Home() {
       page = (
         <MyOpportunities
           go={go}
+          companyId={activeCompanyId}
           onSelectOpportunity={(o) => setEditingOpportunity(o)}
           onEditOpportunity={(o) => setEditingOpportunity(o)}
         />
@@ -577,6 +727,8 @@ export default function Home() {
         <CreateForm
           go={go}
           opportunity
+          companyId={activeCompanyId}
+          companyName={companyProfile?.name || session?.name}
           editingOpportunity={null}
           onNotificationTrigger={() => refreshNotifications()}
         />
@@ -586,6 +738,8 @@ export default function Home() {
         <CreateForm
           go={go}
           opportunity
+          companyId={activeCompanyId}
+          companyName={companyProfile?.name || session?.name}
           editingOpportunity={editingOpportunity}
           onNotificationTrigger={() => refreshNotifications()}
         />

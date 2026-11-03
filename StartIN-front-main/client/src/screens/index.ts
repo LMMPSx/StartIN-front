@@ -7,3 +7,5 @@ export * from "./AssistantScreen";
 export * from "./StartupScreen";
 export * from "./MyOpportunitiesScreen";
 export * from "./SettingsScreens";
+export * from "./LandingScreen";
+

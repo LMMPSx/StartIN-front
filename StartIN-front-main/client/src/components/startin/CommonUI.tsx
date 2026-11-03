@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowLeft, ArrowRight, Eye, EyeOff } from "@/icons";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Sparkles } from "@/icons";
 import type { OpportunityItem } from "@/lib/api";
 import { formatOppType, getBadgeColorByType } from "@/utils/formatters";
 
@@ -186,5 +186,194 @@ export function OpportunityCard({
         </button>
       </div>
     </article>
+  );
+}
+
+// =========================================================================
+// MINI TUTORIAL: O QUE ESCREVER PARA A IA LER E MELHORAR (PALETA OFICIAL STARTIN)
+// =========================================================================
+export function AiPromptTutorialGuide({
+  role = "company",
+  defaultExpanded = true,
+}: {
+  role?: "company" | "startup";
+  defaultExpanded?: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const isCompany = role === "company";
+
+  return (
+    <div className="relative mb-3 overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white p-4 sm:p-5 shadow-xs transition">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#111827] px-3 py-1 text-[11px] font-black text-[#FEC908] shadow-xs">
+            <Sparkles size={12} className="text-[#FEC908] fill-[#FEC908]" />
+            Mini Tutorial · Guia de Estruturação com IA
+          </span>
+          <span className="text-xs font-bold text-[#111827]">
+            {isCompany
+              ? "Como descrever seus desafios para a IA"
+              : "Como descrever seu problema e solução para a IA"}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#64748b] hover:text-[#111827] transition"
+        >
+          {isExpanded ? "Ocultar orientações" : "Ver o que escrever"}
+          {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        </button>
+      </div>
+
+      {isExpanded && (
+        <div className="relative z-10 mt-3.5 space-y-3">
+          <p className="text-xs font-medium text-[#475569] leading-relaxed">
+            {isCompany ? (
+              <>
+                A IA do StartIn <strong>lê com profundidade</strong> o que você escrever abaixo para articular uma narrativa executiva personalizada e extrair as tags que conectam sua empresa às startups certas. Para um resultado de excelência, mencione:
+              </>
+            ) : (
+              <>
+                A IA do StartIn <strong>analisa a essência</strong> do seu rascunho para montar uma apresentação técnica coesa e atraente para editais e grandes empresas. Para um resultado de excelência, mencione:
+              </>
+            )}
+          </p>
+
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {isCompany ? (
+              <>
+                <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                      1
+                    </span>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                      Contexto & Segmento
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                    Indique se atua em <strong>B2B ou B2C</strong>, seu setor e quem consome a operação (clientes finais, equipe interna ou fornecedores).
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                      2
+                    </span>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                      Dor ou Gargalo Operacional
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                    Qual rotina hoje é <strong>manual, lenta ou gera erros</strong> (ex: conciliação, atendimento, análise de dados ou processos repetitivos)?
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                      3
+                    </span>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                      Tecnologias Desejadas
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                    O que você gostaria de testar (ex: <strong>IA aplicada, automação RPA, inteligência de dados, visão computacional ou APIs</strong>)?
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                      4
+                    </span>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                      Formato de Parceria
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                    Deseja validar uma <strong>prova de conceito (POC)</strong>, contratar lote inicial (Primeira Compra) ou buscar contratação contínua em escala?
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                      1
+                    </span>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                      Dor Real do Mercado
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                    Qual <strong>problema crítico, custo ou ineficiência</strong> seus clientes enfrentam hoje sem a sua solução?
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                      2
+                    </span>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                      Sua Solução & Tecnologia
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                    Como seu produto funciona na prática e quais <strong>tecnologias fundamentais</strong> você aplica (ex: IA generativa, SaaS, IoT)?
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                      3
+                    </span>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                      Público-Alvo & Modelo
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                    Para quem vende (<strong>B2B, B2C, clínicas, indústrias, PMEs</strong>) e como monetiza (SaaS mensal, comissão, licença)?
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                      4
+                    </span>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                      Diferencial & Impacto Mensurável
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                    Qual <strong>ganho tangível</strong> você entrega (ex: reduz faltas em 30%, economiza 40% de tempo ou corta custos)?
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="rounded-xl bg-[#111827]/[0.03] border border-[#e2e8f0] px-3.5 py-2.5 text-[11px] font-medium text-[#334155] flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 font-bold text-[#111827] shrink-0">
+              <Sparkles size={13} className="text-[#FEC908] fill-[#FEC908]" />
+              Dica StartIn:
+            </span>
+            <span className="text-[#475569]">
+              {isCompany
+                ? "Escreva com suas próprias palavras no campo abaixo. Ao clicar em 'Melhorar desafios e demandas com IA', o motor integrará 100% das suas ideias em parágrafos executivos fluidos e preencherá as tags de matchmaking automaticamente."
+                : "Escreva com suas próprias palavras no campo abaixo. Ao clicar em 'Melhorar texto com IA', o motor integrará 100% das suas ideias em uma apresentação técnica fluida, sem templates robóticos e com tags prontas para editais e empresas."}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

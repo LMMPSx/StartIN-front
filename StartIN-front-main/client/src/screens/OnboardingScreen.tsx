@@ -7,10 +7,11 @@ import {
   ChevronDown,
   FileText,
   Logo,
+  Rocket,
   Sparkles,
   Upload,
 } from "@/icons";
-import { Field, PrimaryButton } from "@/components/startin/CommonUI";
+import { AiPromptTutorialGuide, Field, PrimaryButton } from "@/components/startin/CommonUI";
 import {
   api,
   getSession,
@@ -35,6 +36,168 @@ export const MAIN_TECH_AREAS = [
   "Logística & Mobilidade",
   "Outro",
 ] as const;
+
+export const COMPANY_SECTOR_AREAS = [
+  "Operações Corporativas & Tecnologia",
+  "Saúde / Hospitais & Farmacêutica",
+  "Finanças, Bancos & Seguros",
+  "Varejo, Logística & E-commerce",
+  "Indústria 4.0, Energia & Manufatura",
+  "Agronegócio & Supply Chain",
+  "Educação & Treinamento Corporativo",
+  "GovTech & Setor Público",
+  "Outro",
+] as const;
+
+export const SUGGESTED_COMPANY_TOPICS: Record<string, string[]> = {
+  default: [
+    "Automação de Processos",
+    "IA & Dados",
+    "Integração ERP/Sistemas",
+    "Analytics & BI",
+    "Redução de Custos",
+    "Segurança & LGPD",
+    "Eficiência Operacional",
+    "Cloud B2B",
+  ],
+  "Saúde / Hospitais & Farmacêutica": [
+    "Prontuário Eletrônico",
+    "Telemedicina",
+    "Automação de Triagem",
+    "Gestão Hospitalar",
+    "IA Diagnóstica",
+    "Compliance Sanitário",
+  ],
+  "Finanças, Bancos & Seguros": [
+    "Open Finance",
+    "Prevenção à Fraude",
+    "Conciliação Automática",
+    "Core Bancário",
+    "Score de Crédito",
+    "Pix & Pagamentos",
+  ],
+  "Varejo, Logística & E-commerce": [
+    "Rastreamento de Cargas",
+    "Otimização de Rotas",
+    "Gestão de Estoque",
+    "Omnichannel",
+    "Inteligência de Preços",
+  ],
+  "Indústria 4.0, Energia & Manufatura": [
+    "Sensores IoT",
+    "Manutenção Preditiva",
+    "Eficiência Energética",
+    "Gêmeos Digitais",
+    "Automação Industrial",
+  ],
+};
+
+export const SUGGESTED_STARTUP_TOPICS: Record<string, string[]> = {
+  default: [
+    "IA Generativa",
+    "Machine Learning",
+    "Analytics & BI",
+    "SaaS B2B",
+    "Automação RPA",
+    "APIs & Microserviços",
+    "Cibersegurança & LGPD",
+    "IoT & Hardware",
+    "Visão Computacional",
+    "Cloud Native",
+  ],
+  "Inteligência Artificial & Dados": [
+    "IA Generativa",
+    "Machine Learning",
+    "Deep Learning",
+    "Visão Computacional",
+    "NLP & Processamento de Texto",
+    "Analytics & BI",
+    "Big Data & ETL",
+    "Modelos Preditivos",
+  ],
+  "Healthtech / Saúde Digital": [
+    "Prontuário Eletrônico",
+    "Telemedicina",
+    "Triagem Inteligente",
+    "IA Diagnóstica",
+    "Dispositivos Médicos",
+    "Interoperabilidade HL7",
+    "Compliance Sanitário",
+  ],
+  "Fintech / Serviços Financeiros": [
+    "Open Finance",
+    "Prevenção à Fraude",
+    "Score de Crédito",
+    "Meios de Pagamento & Pix",
+    "Blockchain & DeFi",
+    "Conciliação Financeira",
+    "Regtech & Compliance",
+  ],
+  "SaaS B2B & Cloud": [
+    "SaaS Multi-tenant",
+    "APIs RESTful & GraphQL",
+    "Automação de Workflow",
+    "Cloud Native",
+    "Integração ERP/CRM",
+    "DevOps & CI/CD",
+  ],
+  "Agtech / Agronegócio": [
+    "Monitoramento de Safras",
+    "Sensores de Solo & Clima",
+    "Imagens de Satélite & Drones",
+    "Gestão de Propriedade",
+    "Rastreabilidade & Cadeia de Frio",
+  ],
+  "Edtech / Educação": [
+    "Plataforma LMS",
+    "Gamificação",
+    "Aprendizado Adaptativo",
+    "Aulas Interativas",
+    "Análise de Engajamento",
+  ],
+  "Indústria 4.0 & IoT": [
+    "Sensores IoT",
+    "Manutenção Preditiva",
+    "Gêmeos Digitais",
+    "Robótica & Automação",
+    "Visão Computacional Industrial",
+    "Eficiência Operacional",
+  ],
+  "Cibersegurança": [
+    "Proteção de Dados & LGPD",
+    "Detecção de Ameaças (SIEM)",
+    "Zero Trust",
+    "Criptografia Avançada",
+    "Pentest & Auditoria",
+  ],
+  "Varejo & E-commerce": [
+    "Omnichannel",
+    "Recomendação de Produtos",
+    "Gestão Inteligente de Estoque",
+    "Logística Reversa",
+    "Checkout Transparente",
+  ],
+  "CleanTech & Energia": [
+    "Gestão Energética",
+    "Créditos de Carbono",
+    "Energia Renovável & Solar",
+    "Monitoramento de Consumo",
+    "Sustentabilidade ESG",
+  ],
+  "GovTech & Cidades Inteligentes": [
+    "Serviços Digitais ao Cidadão",
+    "Gestão Pública & Transparência",
+    "Mobilidade Urbana",
+    "Iluminação Inteligente",
+  ],
+  "Logística & Mobilidade": [
+    "Roteirização Inteligente",
+    "Telemetria & Rastreamento",
+    "Gestão de Frotas",
+    "Last Mile Delivery",
+    "Automação de Armazéns",
+  ],
+};
 
 export const NASA_TRL_QUESTIONS = [
   {
@@ -110,17 +273,27 @@ export function Onboarding({
   const [companyStep, setCompanyStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  // Etapa 01 — Área principal com opção "Outro"
+  // Etapa 01 (Startup) — Área principal com opção "Outro"
   const [selectedMainArea, setSelectedMainArea] = useState<string>(MAIN_TECH_AREAS[0]);
   const [customMainArea, setCustomMainArea] = useState<string>("");
 
-  // Etapa 02 — Melhoria obrigatória com IA
+  // Etapa 02 (Startup) — Melhoria obrigatória com IA
   const [enhancingAi, setEnhancingAi] = useState(false);
   const [aiEnhanced, setAiEnhanced] = useState(false);
   const [aiExtractedTags, setAiExtractedTags] = useState<string[]>([]);
   const [aiError, setAiError] = useState("");
 
-  // Etapa 03 — Momento (Validação vs Tração + TRL NASA + PDF Atestado)
+  // Etapa 01 (Empresa) — Setor com opção "Outro"
+  const [selectedCompanySector, setSelectedCompanySector] = useState<string>(COMPANY_SECTOR_AREAS[0]);
+  const [customCompanySector, setCustomCompanySector] = useState<string>("");
+
+  // Etapa 02 (Empresa) — Melhoria obrigatória com IA
+  const [enhancingCompanyAi, setEnhancingCompanyAi] = useState(false);
+  const [companyAiEnhanced, setCompanyAiEnhanced] = useState(false);
+  const [companyAiExtractedTags, setCompanyAiExtractedTags] = useState<string[]>([]);
+  const [companyAiError, setCompanyAiError] = useState("");
+
+  // Etapa 03 (Startup) — Momento (Validação vs Tração + TRL NASA + PDF Atestado)
   const [trlAnswers, setTrlAnswers] = useState<Record<string, "SIM" | "NAO">>({});
   const [verifyingPdf, setVerifyingPdf] = useState(false);
   const [pdfFileName, setPdfFileName] = useState("");
@@ -269,6 +442,25 @@ export function Onboarding({
     compLoader
       .then((c) => {
         if (c) {
+          const secVal = c.sector || COMPANY_SECTOR_AREAS[0];
+          const isKnown = (COMPANY_SECTOR_AREAS as readonly string[]).includes(secVal) && secVal !== "Outro";
+          if (isKnown) {
+            setSelectedCompanySector(secVal);
+            setCustomCompanySector("");
+          } else if (secVal) {
+            setSelectedCompanySector("Outro");
+            setCustomCompanySector(secVal);
+          }
+
+          if (c.demands && (c.demands.includes("Desafio Operacional") || c.demands.includes("Demandas Tecnológicas"))) {
+            setCompanyAiEnhanced(true);
+          }
+
+          if (c.tags) {
+            const parsedTags = c.tags.split(/[,•]/).map((t) => t.trim()).filter(Boolean);
+            setCompanyAiExtractedTags(parsedTags);
+          }
+
           setCompanyForm((prev) => ({
             ...prev,
             ...Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v ?? ""])),
@@ -287,13 +479,27 @@ export function Onboarding({
       ? customMainArea.trim() || "Tecnologia & Inovação"
       : selectedMainArea;
 
-  // Startup agora tem exatamente 3 etapas: 01 Identidade, 02 Solução, 03 Momento
-  const labels = ["Identidade", "Solução", "Momento"];
+  const effectiveCompanySector =
+    selectedCompanySector === "Outro"
+      ? customCompanySector.trim() || "Operações Corporativas & Tecnologia"
+      : selectedCompanySector;
+
+  const activeCompanySuggestedTopics =
+    SUGGESTED_COMPANY_TOPICS[effectiveCompanySector] ||
+    SUGGESTED_COMPANY_TOPICS.default ||
+    [];
+
+  const activeStartupSuggestedTopics =
+    SUGGESTED_STARTUP_TOPICS[effectiveMainArea] ||
+    SUGGESTED_STARTUP_TOPICS.default ||
+    [];
+
+  // Startup e Empresa têm exatamente 3 etapas simétricas
+  const labels = ["Identidade", "Solução & IA", "Momento & TRL"];
   const companyLabels = [
     "Identidade da Empresa",
-    "Demandas (POC / Compra)",
-    "Perfil de Startup",
-    "Concluído",
+    "Desafios & Demandas (IA)",
+    "Perfil de Startup Buscado",
   ];
 
   const handleEnhanceProblemWithAI = async () => {
@@ -339,27 +545,121 @@ export function Onboarding({
     }
   };
 
-  const handleSelectStage = (stage: "Validação" | "Tração") => {
-    if (stage === "Validação") {
-      setForm((prev) => ({
-        ...prev,
-        currentStage: "Validação",
-        opportunityTypes: "POC, Primeira Compra, Editais, Eventos",
-        trlScore: 4,
-      }));
-    } else {
-      const computed = calculateTrlFromAnswers(trlAnswers);
-      setForm((prev) => ({
-        ...prev,
-        currentStage: "Tração",
-        opportunityTypes: "Compra, Editais, Eventos",
-        trlScore: prev.tractionAttested ? Math.max(7, prev.trlScore || computed) : computed,
-      }));
+  const handleEnhanceCompanyWithAI = async () => {
+    setCompanyAiError("");
+    if (!companyForm.demands || companyForm.demands.trim().length < 10) {
+      setCompanyAiError("Descreva ao menos uma breve explicação dos desafios operacionais da sua empresa antes de melhorar com a IA.");
+      return;
     }
+    setEnhancingCompanyAi(true);
+    try {
+      const res = await api.enhanceCompanyDemandsAI({
+        text: companyForm.demands,
+        sector: effectiveCompanySector,
+        companyName: companyForm.name,
+        operationMode: companyForm.operationMode,
+      });
+      const tags = Array.isArray(res.tags) && res.tags.length > 0
+        ? res.tags
+        : (res.technologies || effectiveCompanySector)
+            .split(/[,•]/)
+            .map((t) => t.trim())
+            .filter(Boolean);
+
+      setCompanyAiExtractedTags(tags);
+      setCompanyForm((prev) => ({
+        ...prev,
+        sector: effectiveCompanySector,
+        demands: res.enhancedText || prev.demands,
+        tags: res.technologies || tags.join(", "),
+      }));
+      setCompanyAiEnhanced(true);
+    } catch (err: any) {
+      setCompanyAiError(err.message || "Não foi possível estruturar as demandas com a IA.");
+    } finally {
+      setEnhancingCompanyAi(false);
+    }
+  };
+
+  const handleToggleCompanyTopic = (topic: string) => {
+    const currentTags = (companyForm.tags || "")
+      .split(/[,•]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const exists = currentTags.some((t) => t.toLowerCase() === topic.toLowerCase());
+    let nextTags: string[];
+    if (exists) {
+      nextTags = currentTags.filter((t) => t.toLowerCase() !== topic.toLowerCase());
+    } else {
+      nextTags = [...currentTags, topic];
+    }
+    const tagsStr = nextTags.join(", ");
+    setCompanyAiExtractedTags(nextTags);
+    setCompanyForm((prev) => ({
+      ...prev,
+      tags: tagsStr,
+    }));
+  };
+
+  const handleToggleStartupTopic = (topic: string) => {
+    const currentTags = (form.technologies || "")
+      .split(/[,•]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const exists = currentTags.some((t) => t.toLowerCase() === topic.toLowerCase());
+    let nextTags: string[];
+    if (exists) {
+      nextTags = currentTags.filter((t) => t.toLowerCase() !== topic.toLowerCase());
+    } else {
+      nextTags = [...currentTags, topic];
+    }
+    const tagsStr = nextTags.join(", ");
+    setAiExtractedTags(nextTags);
+    setForm((prev) => ({
+      ...prev,
+      technologies: tagsStr,
+      areasOfInterest: tagsStr,
+    }));
+  };
+
+  const handleAnswerTrlQuestion = (questionId: string, answer: "SIM" | "NAO") => {
+    setPdfError("");
+    const updatedAnswers = {
+      ...trlAnswers,
+      [questionId]: answer,
+    };
+    setTrlAnswers(updatedAnswers);
+
+    const computed = calculateTrlFromAnswers(updatedAnswers);
+    const isTracao = computed >= 7;
+
+    setForm((prev) => ({
+      ...prev,
+      trlScore: prev.tractionAttested ? Math.max(7, prev.trlScore || computed) : computed,
+      currentStage: isTracao ? "Tração" : "Validação",
+      opportunityTypes: isTracao
+        ? (prev.tractionAttested ? "Compra, Editais, Eventos" : "Compra, Editais, Eventos")
+        : "POC, Primeira Compra, Editais, Eventos",
+      productMaturity: isTracao
+        ? `Estágio Tração (TRL ${computed}/9${prev.tractionAttested ? " validado" : ""})`
+        : `Estágio Validação (TRL ${computed}/9)`,
+    }));
+  };
+
+  const handleProceedAsValidacao = () => {
+    setForm((prev) => ({
+      ...prev,
+      currentStage: "Validação",
+      opportunityTypes: "POC, Primeira Compra, Editais, Eventos",
+      productMaturity: "Estágio Validação (TRL 6/9)",
+      tractionAttested: false,
+    }));
+    setPdfError("");
   };
 
   const allTrlAnswered = Object.keys(trlAnswers).length === NASA_TRL_QUESTIONS.length;
   const computedTrlScore = calculateTrlFromAnswers(trlAnswers);
+  const isTracaoSelected = form.currentStage === "Tração" || computedTrlScore >= 7;
 
   const handleTractionPdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -436,6 +736,7 @@ export function Onboarding({
       return aiEnhanced && form.problem.trim().length >= 15;
     }
     if (step === 2) {
+      if (!allTrlAnswered) return false;
       if (form.currentStage === "Tração") {
         return Boolean(form.tractionAttested);
       }
@@ -445,6 +746,26 @@ export function Onboarding({
   };
 
   const handleNextStartupStep = async () => {
+    if (step === 1 && !aiEnhanced) {
+      setAiError(
+        "Por favor, clique em 'Melhorar texto com IA' para estruturar sua solução antes de avançar para a próxima etapa."
+      );
+      return;
+    }
+    if (step === 2) {
+      if (!allTrlAnswered) {
+        setPdfError(
+          "Por favor, responda a todas as 5 questões da escala TRL da NASA para definir seu estágio."
+        );
+        return;
+      }
+      if (form.currentStage === "Tração" && !form.tractionAttested) {
+        setPdfError(
+          "Sua avaliação na escala TRL qualificou sua startup para o estágio de Tração. Por favor, anexe seu Atestado de Capacidade Técnica (PDF) para certificação pela IA ou selecione prosseguir em Validação."
+        );
+        return;
+      }
+    }
     if (!canAdvanceStartupStep()) return;
 
     const targetId = form.id || startupId || session?.startupProfileId || 1;
@@ -496,7 +817,26 @@ export function Onboarding({
     }
   };
 
+  const canAdvanceCompanyStep = () => {
+    if (companyStep === 0) {
+      if (selectedCompanySector === "Outro" && !customCompanySector.trim()) return false;
+      return true;
+    }
+    if (companyStep === 1) {
+      return companyAiEnhanced && (companyForm.demands || "").trim().length >= 15;
+    }
+    return true;
+  };
+
   const handleNextCompanyStep = async () => {
+    if (companyStep === 1 && !companyAiEnhanced) {
+      setCompanyAiError(
+        "Por favor, clique em 'Melhorar desafios e demandas com IA' para estruturar os requisitos antes de continuar."
+      );
+      return;
+    }
+    if (!canAdvanceCompanyStep()) return;
+
     if (companyStep < 2) {
       setCompanyStep((s) => s + 1);
       return;
@@ -509,6 +849,7 @@ export function Onboarding({
       }
       const payload: CompanyProfileData = {
         ...companyForm,
+        sector: effectiveCompanySector,
         description: "",
         userId: session?.userId,
         name: companyForm.name.trim() || session?.name || "Empresa Alpha",
@@ -644,34 +985,95 @@ export function Onboarding({
     const companyStep0 = (
       <div className="grid gap-5 md:grid-cols-2">
         <div className="md:col-span-2 rounded-xl border border-[#e3e8ee] bg-[#f8fafc] px-4 py-3 text-xs text-[#4a5d6e]">
-          Empresa cadastrada: <strong className="text-[#111827]">{companyForm.name}</strong>
+          Dados vinculados do cadastro inicial:{" "}
+          <strong className="text-[#111827]">{companyForm.name}</strong>
           {companyForm.cnpj ? ` · CNPJ: ${companyForm.cnpj}` : ""}
-          {" · "}(dados cadastrais editáveis em <strong>Minha empresa</strong>).
+          {companyForm.phone ? ` · Tel: ${companyForm.phone}` : ""} — editáveis a qualquer momento em{" "}
+          <strong className="text-[#111827]">Conta e acesso</strong>.
         </div>
+
+        <div className="md:col-span-2">
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold text-[#203754]">
+              Setor de atuação corporativa
+            </span>
+            {selectedCompanySector === "Outro" ? (
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Digite o setor corporativo (ex: Mineração, Telecom, Varejo Farma)..."
+                  value={customCompanySector}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomCompanySector(val);
+                    setCompanyForm((prev) => ({ ...prev, sector: val }));
+                  }}
+                  className="h-11 w-full rounded-lg border border-[#111827] bg-white pl-3.5 pr-28 text-xs font-semibold text-[#111827] outline-none transition focus:border-[#111827] placeholder:font-normal placeholder:text-[#98a2ab]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCompanySector(COMPANY_SECTOR_AREAS[0]);
+                    setCustomCompanySector("");
+                    setCompanyForm((prev) => ({
+                      ...prev,
+                      sector: COMPANY_SECTOR_AREAS[0],
+                    }));
+                  }}
+                  className="absolute right-1.5 inline-flex items-center gap-1 rounded-md bg-gray-100 px-2.5 py-1.5 text-[11px] font-bold text-[#111827] transition hover:bg-gray-200"
+                  title="Voltar para a lista de setores"
+                >
+                  Ver lista <ChevronDown size={12} />
+                </button>
+              </div>
+            ) : (
+              <select
+                value={selectedCompanySector}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedCompanySector(val);
+                  if (val === "Outro") {
+                    setCompanyForm((prev) => ({
+                      ...prev,
+                      sector: customCompanySector,
+                    }));
+                  } else {
+                    setCompanyForm((prev) => ({ ...prev, sector: val }));
+                  }
+                }}
+                className="h-11 w-full rounded-lg border border-[#d9e1e7] bg-white px-3.5 text-xs font-semibold text-[#111827] outline-none transition focus:border-[#111827]"
+              >
+                {COMPANY_SECTOR_AREAS.map((sec) => (
+                  <option key={sec} value={sec}>
+                    {sec}
+                  </option>
+                ))}
+              </select>
+            )}
+          </label>
+        </div>
+
         <Field
-          label="Setor de atuação"
-          placeholder="Saúde, Finanças, Indústria, Varejo..."
-          value={companyForm.sector || ""}
-          onChange={setCompanyField("sector")}
-        />
-        <Field
-          label="Localização"
+          label="Localização (Sede / Cidade, UF)"
           placeholder="Recife, PE · Brasil"
           value={companyForm.location || ""}
           onChange={setCompanyField("location")}
         />
+
         <Field
-          label="Site corporativo"
-          placeholder="https://"
+          label="Site corporativo ou portal de inovação"
+          placeholder="https://empresa.com.br"
           value={companyForm.website || ""}
           onChange={setCompanyField("website")}
         />
-        <div>
+
+        <div className="md:col-span-2">
           <span className="mb-2 block text-xs font-semibold text-[#203754]">
             Tipo de organização
           </span>
           <div className="flex flex-wrap gap-2">
-            {["Empresa", "Organização", "Instituição"].map((t) => (
+            {["Empresa Privada", "Corporação Multinacional", "Indústria", "Instituição Financeira", "Organização / Hub"].map((t) => (
               <button
                 key={t}
                 type="button"
@@ -679,7 +1081,7 @@ export function Onboarding({
                 className={`rounded-lg px-4 py-2.5 text-xs font-bold transition ${
                   companyForm.type === t
                     ? "bg-[#111827] text-white"
-                    : "bg-gray-100 text-gray-700"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 {t}
@@ -691,21 +1093,128 @@ export function Onboarding({
     );
 
     const companyStep1 = (
-      <div className="grid gap-5">
+      <div className="space-y-5">
+        <AiPromptTutorialGuide role="company" />
+        <div>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-[#203754]">
+              Desafios operacionais e demandas de inovação (POC / Compra)
+            </span>
+            {companyAiEnhanced ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f7ee] px-3 py-1 text-[11px] font-bold text-[#166d48]">
+                <Check size={12} /> Demandas estruturadas pela IA para o matchmaking
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#fff6d6] px-3 py-1 text-[11px] font-bold text-[#854d0e]">
+                <Sparkles size={12} /> Estruturação com IA recomendada antes de avançar
+              </span>
+            )}
+          </div>
+          <textarea
+            rows={9}
+            placeholder="Descreva os problemas operacionais, gargalos tecnológicos ou processos que sua empresa busca resolver ou testar com startups. Em seguida, clique em 'Melhorar desafios e demandas com IA' para organizar os tópicos do matchmaking."
+            value={companyForm.demands || ""}
+            onChange={(e) => setCompanyField("demands")(e.target.value)}
+            className="w-full rounded-xl border border-[#d9e1e7] bg-[#fcfdfe] p-4 text-xs leading-6 text-[#111827] outline-none transition focus:border-[#111827]"
+          />
+        </div>
+
+        {companyAiError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
+            {companyAiError}
+          </div>
+        )}
+
+        <div className="flex flex-col justify-between gap-3 rounded-xl border border-[#e3e8ee] bg-[#f8fafc] p-4 sm:flex-row sm:items-center">
+          <div className="text-xs leading-5 text-[#5b6b79]">
+            A IA estrutura as demandas no padrão executivo B2B, preserva 100% dos seus requisitos e extrai tecnologias e tópicos de compatibilidade.
+          </div>
+          <button
+            type="button"
+            disabled={enhancingCompanyAi}
+            onClick={handleEnhanceCompanyWithAI}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#111827] px-5 py-3 text-xs font-extrabold text-[#FEC908] shadow-sm transition hover:bg-black disabled:opacity-60"
+          >
+            <Sparkles size={15} />
+            {enhancingCompanyAi
+              ? "Estruturando demandas com IA..."
+              : companyAiEnhanced
+              ? "Reestruturar demandas com IA"
+              : "Melhorar desafios e demandas com IA"}
+          </button>
+        </div>
+
+        {companyAiExtractedTags.length > 0 && (
+          <div className="rounded-xl border border-[#dce6ef] bg-white p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
+              Tags e tecnologias extraídas automaticamente da demanda
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {companyAiExtractedTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-[#111827] px-3 py-1 text-[11px] font-bold text-[#FEC908]"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tópicos integrados para Empresa */}
+        <div className="rounded-xl border border-[#dce6ef] bg-white p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
+              Tópicos de inovação sugeridos para {effectiveCompanySector}
+            </p>
+            <span className="text-[10.5px] text-[#94a3b8]">Clique para adicionar ou remover das tags</span>
+          </div>
+          <p className="mt-1 text-xs text-[#64748b]">
+            Estes tópicos são integrados à demanda da sua empresa e aumentam a precisão do match com startups e editais.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {activeCompanySuggestedTopics.map((topic) => {
+              const isSelected = (companyForm.tags || "")
+                .toLowerCase()
+                .includes(topic.toLowerCase());
+              return (
+                <button
+                  key={topic}
+                  type="button"
+                  onClick={() => handleToggleCompanyTopic(topic)}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    isSelected
+                      ? "bg-[#111827] text-[#FEC908] shadow-xs"
+                      : "border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <span>{isSelected ? "✓" : "+"}</span>
+                  <span>{topic}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+
+    const companyStep2 = (
+      <div className="space-y-6">
         <div>
           <span className="mb-2 block text-xs font-semibold text-[#203754]">
             Modalidades de oportunidades que sua empresa deseja lançar
           </span>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             {["POC", "Primeira Compra", "Compra", "POC + Compra"].map((mode) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => setCompanyField("operationMode")(mode)}
-                className={`rounded-lg px-5 py-3 text-xs font-bold transition ${
+                className={`rounded-xl border p-3.5 text-center text-xs font-extrabold transition ${
                   companyForm.operationMode === mode
-                    ? "bg-[#111827] text-[#FEC908]"
-                    : "bg-[#f3f6f8] text-[#486680]"
+                    ? "border-[#111827] bg-[#111827] text-[#FEC908] shadow-xs"
+                    : "border-[#dfe5ea] bg-white text-[#486680] hover:border-[#111827]"
                 }`}
               >
                 {mode}
@@ -713,38 +1222,79 @@ export function Onboarding({
             ))}
           </div>
         </div>
-        <label className="block">
-          <span className="mb-2 block text-xs font-semibold text-[#203754]">
-            Principais desafios e demandas de inovação aberta (POC / Compra)
-          </span>
-          <textarea
-            rows={5}
-            placeholder="Descreva os problemas operacionais, desafios tecnológicos ou soluções que sua empresa busca contratar ou testar."
-            value={companyForm.demands || ""}
-            onChange={(e) => setCompanyField("demands")(e.target.value)}
-            className="w-full rounded-lg border border-[#d9e1e7] bg-white p-3.5 text-xs leading-5 text-[#111827] outline-none focus:border-[#111827]"
-          />
-        </label>
-      </div>
-    );
 
-    const companyStep2 = (
-      <div className="grid gap-5 md:grid-cols-2">
-        <div className="md:col-span-2">
+        <div>
+          <span className="mb-2 block text-xs font-semibold text-[#203754]">
+            Estágio de maturidade desejado para as startups
+          </span>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              {
+                id: "Validação",
+                label: "Validação (TRL 4–6)",
+                desc: "MVPs funcionais e protótipos validados, ideais para provas de conceito (POC) e Primeira Compra.",
+              },
+              {
+                id: "Tração",
+                label: "Tração (TRL 7–9)",
+                desc: "Startups com capacidade técnica atestada em escala, preparadas para compras e fornecimento contínuo.",
+              },
+              {
+                id: "Validação e Tração",
+                label: "Ambos os estágios",
+                desc: "Empresa aberta a provas de conceito (POCs - Validação) e contratações diretas em escala (Tração).",
+              },
+            ].map((stageOpt) => {
+              const isSelected =
+                (companyForm.preferredStage || "").toLowerCase() === stageOpt.id.toLowerCase() ||
+                (stageOpt.id === "Validação e Tração" &&
+                  (companyForm.preferredStage || "").toLowerCase().includes("ambos"));
+              return (
+                <button
+                  key={stageOpt.id}
+                  type="button"
+                  onClick={() => setCompanyField("preferredStage")(stageOpt.id)}
+                  className={`rounded-2xl border-2 p-4 text-left transition ${
+                    isSelected
+                      ? "border-[#111827] bg-[#111827] text-white shadow-md"
+                      : "border-[#dfe5ea] bg-white text-[#111827] hover:border-[#9fb0bf]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold">{stageOpt.label}</span>
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-md border ${
+                        isSelected
+                          ? "border-[#FEC908] bg-[#FEC908] text-[#111827]"
+                          : "border-gray-300 bg-white"
+                      }`}
+                    >
+                      {isSelected && <Check size={12} strokeWidth={3} />}
+                    </span>
+                  </div>
+                  <p
+                    className={`mt-2 text-[11px] leading-4.5 ${
+                      isSelected ? "text-gray-300" : "text-[#697885]"
+                    }`}
+                  >
+                    {stageOpt.desc}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
           <Field
-            label="Tecnologias e áreas buscadas nas startups"
-            placeholder="IA, SaaS, B2B, Dados, Automação, Healthtech, Fintech..."
+            label="Tags de tecnologias e competências sincronizadas para o matching"
+            placeholder="IA, SaaS B2B, Analytics, Cloud, Automação..."
             value={companyForm.tags || ""}
             onChange={setCompanyField("tags")}
           />
-        </div>
-        <div className="md:col-span-2">
-          <Field
-            label="Estágio de maturidade desejado para as startups"
-            placeholder="Validação ou Tração"
-            value={companyForm.preferredStage || ""}
-            onChange={setCompanyField("preferredStage")}
-          />
+          <p className="mt-1 text-[11px] text-[#718096]">
+            Separadas por vírgula. Estas tags alimentam diretamente o cálculo dos subtópicos de aderência técnica com as startups.
+          </p>
         </div>
       </div>
     );
@@ -938,6 +1488,7 @@ export function Onboarding({
   // ==========================================================
   const stepSolucao = (
     <div className="space-y-5">
+      <AiPromptTutorialGuide role="startup" />
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-bold text-[#203754]">
@@ -1004,254 +1555,280 @@ export function Onboarding({
           </div>
         </div>
       )}
+
+      {/* Tópicos integrados para Startup */}
+      <div className="rounded-xl border border-[#dce6ef] bg-white p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
+            Tópicos sugeridos para sua área ({effectiveMainArea})
+          </p>
+          <span className="text-[10.5px] text-[#94a3b8]">Clique para adicionar ou remover das tecnologias</span>
+        </div>
+        <p className="mt-1 text-xs text-[#64748b]">
+          Estes tópicos refinam os subtópicos do algoritmo de matchmaking com empresas e editais.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {activeStartupSuggestedTopics.map((topic) => {
+            const isSelected = (form.technologies || "")
+              .toLowerCase()
+              .includes(topic.toLowerCase());
+            return (
+              <button
+                key={topic}
+                type="button"
+                onClick={() => handleToggleStartupTopic(topic)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  isSelected
+                    ? "bg-[#111827] text-[#FEC908] shadow-xs"
+                    : "border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <span>{isSelected ? "✓" : "+"}</span>
+                <span>{topic}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 
   // ==========================================================
-  // ETAPA 03 — MOMENTO (VALIDAÇÃO VS TRAÇÃO + TRL NASA + PDF)
+  // ETAPA 03 — MATURIDADE & TRL DA NASA (DEFINE O ESTÁGIO GERAL)
   // ==========================================================
-  const isTracaoSelected = form.currentStage === "Tração";
+  const computedTrl = calculateTrlFromAnswers(trlAnswers);
+  const qualifiesForTracao = computedTrl >= 7;
 
   const stepMomento = (
     <div className="space-y-6">
-      <div>
-        <span className="mb-3 block text-xs font-bold text-[#203754]">
-          Selecione o estágio atual da sua startup (editável depois em Conta e acesso)
-        </span>
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Card Validação */}
-          <button
-            type="button"
-            onClick={() => handleSelectStage("Validação")}
-            className={`flex flex-col justify-between rounded-2xl border-2 p-5 text-left transition ${
-              !isTracaoSelected
-                ? "border-[#111827] bg-[#111827] text-white shadow-md"
-                : "border-[#dfe5ea] bg-white text-[#111827] hover:border-[#9fb0bf]"
-            }`}
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-base font-extrabold">Validação</span>
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-md border ${
-                    !isTracaoSelected
-                      ? "border-[#FEC908] bg-[#FEC908] text-[#111827]"
-                      : "border-gray-300 bg-white"
-                  }`}
-                >
-                  {!isTracaoSelected && <Check size={14} strokeWidth={3} />}
-                </span>
-              </div>
-              <p
-                className={`mt-2.5 text-xs leading-5 ${
-                  !isTracaoSelected ? "text-gray-300" : "text-[#697885]"
-                }`}
-              >
-                Para startups validando MVP, pilotos ou primeiros contratos comerciais. Não exige atestado técnico.
-              </p>
+      {/* Header Explicativo da Escala Geral TRL NASA */}
+      <div className="rounded-2xl border border-[#dbe3ea] bg-white p-5 md:p-6 shadow-xs">
+        <div className="flex flex-col justify-between gap-3 border-b border-[#e2e8f0] pb-4 sm:flex-row sm:items-center">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-[#111827] px-2.5 py-1 text-[10px] font-extrabold text-[#FEC908]">
+                METODOLOGIA OFICIAL
+              </span>
+              <h3 className="text-base font-extrabold text-[#111827]">
+                Escala TRL da NASA — Definição de Maturidade & Estágio
+              </h3>
             </div>
-            <div className="mt-4 flex flex-wrap gap-1.5 pt-2">
-              {["POCs", "Primeira Compra", "Editais", "Eventos"].map((b) => (
-                <span
-                  key={b}
-                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                    !isTracaoSelected
-                      ? "bg-white/15 text-[#FEC908]"
-                      : "bg-[#f1f5f9] text-[#475569]"
-                  }`}
-                >
-                  {b}
-                </span>
-              ))}
-            </div>
-          </button>
+            <p className="mt-1.5 text-xs leading-5 text-[#64748b]">
+              A escala TRL (1 a 9) mede a prontidão tecnológica real da sua solução. Responda às 5 perguntas abaixo: a pontuação determinará se sua startup está em <strong>Validação</strong> (níveis 1 a 6) ou em <strong>Tração</strong> (níveis 7 a 9).
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 self-start rounded-xl border border-[#cbd5e1] bg-[#f8fafc] px-4 py-2 sm:self-auto">
+            <span className="text-[11px] font-bold text-[#64748b]">TRL Calculado:</span>
+            <span className="text-sm font-black text-[#111827]">
+              {allTrlAnswered
+                ? form.tractionAttested
+                  ? `${form.trlScore || computedTrl}/9`
+                  : `${computedTrl}/9`
+                : `${computedTrl}/9`}
+            </span>
+          </div>
+        </div>
 
-          {/* Card Tração */}
-          <button
-            type="button"
-            onClick={() => handleSelectStage("Tração")}
-            className={`flex flex-col justify-between rounded-2xl border-2 p-5 text-left transition ${
-              isTracaoSelected
-                ? "border-[#111827] bg-[#111827] text-white shadow-md"
-                : "border-[#dfe5ea] bg-white text-[#111827] hover:border-[#9fb0bf]"
-            }`}
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-base font-extrabold">Tração</span>
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-md border ${
-                    isTracaoSelected
-                      ? "border-[#FEC908] bg-[#FEC908] text-[#111827]"
-                      : "border-gray-300 bg-white"
-                  }`}
-                >
-                  {isTracaoSelected && <Check size={14} strokeWidth={3} />}
-                </span>
-              </div>
-              <p
-                className={`mt-2.5 text-xs leading-5 ${
-                  isTracaoSelected ? "text-gray-300" : "text-[#697885]"
-                }`}
+        {/* 5 Questões TRL */}
+        <div className="mt-5 space-y-3">
+          {NASA_TRL_QUESTIONS.map((q) => {
+            const currentAns = trlAnswers[q.id];
+            return (
+              <div
+                key={q.id}
+                className="flex flex-col justify-between gap-3 rounded-xl border border-[#e2e8f0] bg-[#fcfdfe] p-4 transition hover:border-[#cbd5e1] md:flex-row md:items-center"
               >
-                Para startups com operação comercial comprovada. Acesso direto a demandas de Compra Corporativa (sem POCs).
-              </p>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-1.5 pt-2">
-              {["Compras Corporativas", "Editais", "Eventos"].map((b) => (
-                <span
-                  key={b}
-                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                    isTracaoSelected
-                      ? "bg-white/15 text-[#FEC908]"
-                      : "bg-[#f1f5f9] text-[#475569]"
-                  }`}
-                >
-                  {b}
-                </span>
-              ))}
-            </div>
-          </button>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md bg-[#fef9c3] px-2 py-0.5 text-[10px] font-extrabold text-[#854d0e]">
+                      {q.badge}
+                    </span>
+                    <span className="text-xs font-extrabold text-[#111827]">{q.title}</span>
+                  </div>
+                  <p className="text-xs leading-5 text-[#5b6b79]">{q.question}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {(["SIM", "NAO"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => handleAnswerTrlQuestion(q.id, opt)}
+                      className={`rounded-lg px-4 py-2 text-xs font-extrabold transition ${
+                        currentAns === opt
+                          ? opt === "SIM"
+                            ? "bg-[#111827] text-[#FEC908] shadow-xs"
+                            : "bg-red-600 text-white shadow-xs"
+                          : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      {opt === "SIM" ? "Sim" : "Não"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Fluxo de Comprovação de Tração: TRL NASA + Upload PDF Atestado */}
-      {isTracaoSelected && (
-        <div className="space-y-6 rounded-2xl border border-[#dbe3ea] bg-[#f8fafc] p-5 md:p-6">
-          <div className="flex flex-col justify-between gap-2 border-b border-[#e2e8f0] pb-4 sm:flex-row sm:items-center">
-            <div>
-              <h3 className="text-sm font-extrabold text-[#111827]">
-                1. Pesquisa de Maturidade Tecnológica — Escala TRL da NASA (1 a 9)
-              </h3>
-              <p className="mt-1 text-xs text-[#64748b]">
-                Responda às 5 questões de prontidão tecnológica para liberar o envio do Atestado de Capacidade Técnica em PDF.
+      {/* Card do Resultado da TRL e Estágio Definido */}
+      {allTrlAnswered && (
+        <div className="space-y-5">
+          {!qualifiesForTracao || form.currentStage === "Validação" ? (
+            /* Card Estágio Validação */
+            <div className="rounded-2xl border-2 border-[#16734d] bg-[#f0fbf5] p-5 md:p-6 shadow-sm">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#16734d] text-white">
+                    <Check size={22} strokeWidth={3} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#16734d]">
+                      Estágio Definido Pela TRL
+                    </span>
+                    <h4 className="text-base font-extrabold text-[#111827]">
+                      Validação — Nível TRL {computedTrl}/9
+                    </h4>
+                  </div>
+                </div>
+                <span className="rounded-full bg-[#16734d] px-3.5 py-1 text-xs font-extrabold text-white">
+                  Aprovado para POCs & Editais
+                </span>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-[#24523c]">
+                Sua pontuação na escala TRL comprova que sua solução está na fase de teste, prototipagem ou MVP funcional em ambiente relevante. Sua startup está qualificada para receber <strong>POCs corporativas</strong>, <strong>Primeira Compra</strong>, <strong>Editais de Fomento</strong> e <strong>Eventos</strong>.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-[#c6ecd7] pt-3">
+                {["POCs", "Primeira Compra", "Editais", "Eventos"].map((b) => (
+                  <span
+                    key={b}
+                    className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#16734d] shadow-2xs"
+                  >
+                    ✓ {b}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] font-semibold text-[#16734d]">
+                Nenhum documento adicional é exigido para o estágio de Validação. Você já pode avançar e finalizar o perfil!
               </p>
             </div>
-            <span className="self-start rounded-full bg-[#111827] px-3.5 py-1 text-xs font-extrabold text-[#FEC908] sm:self-auto">
-              TRL estimado: {form.tractionAttested ? form.trlScore || computedTrlScore : computedTrlScore}/9
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {NASA_TRL_QUESTIONS.map((q) => {
-              const currentAns = trlAnswers[q.id];
-              return (
-                <div
-                  key={q.id}
-                  className="flex flex-col justify-between gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 md:flex-row md:items-center"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-md bg-[#fef9c3] px-2 py-0.5 text-[10px] font-extrabold text-[#854d0e]">
-                        {q.badge}
-                      </span>
-                      <span className="text-xs font-extrabold text-[#111827]">{q.title}</span>
-                    </div>
-                    <p className="text-xs leading-5 text-[#5b6b79]">{q.question}</p>
+          ) : (
+            /* Card Estágio Tração - Exige Atestado PDF */
+            <div className="rounded-2xl border-2 border-[#111827] bg-white p-5 md:p-6 shadow-sm">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#111827] text-[#FEC908]">
+                    <Rocket size={22} />
                   </div>
-                  <div className="flex shrink-0 gap-2">
-                    {(["SIM", "NAO"] as const).map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() =>
-                          setTrlAnswers((prev) => ({
-                            ...prev,
-                            [q.id]: opt,
-                          }))
-                        }
-                        className={`rounded-lg px-4 py-2 text-xs font-extrabold transition ${
-                          currentAns === opt
-                            ? opt === "SIM"
-                              ? "bg-[#111827] text-[#FEC908]"
-                              : "bg-red-600 text-white"
-                            : "border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
-                        }`}
-                      >
-                        {opt === "SIM" ? "Sim" : "Não"}
-                      </button>
-                    ))}
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#b45309]">
+                      Estágio Definido Pela TRL
+                    </span>
+                    <h4 className="text-base font-extrabold text-[#111827]">
+                      Tração — Nível TRL {computedTrl}/9
+                    </h4>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-
-          {allTrlAnswered && (
-            <div className="rounded-xl border border-[#cbd5e1] bg-white p-5">
-              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                <div>
-                  <h4 className="flex items-center gap-2 text-sm font-extrabold text-[#111827]">
-                    <FileText size={16} /> 2. Anexar Atestado de Capacidade Técnica (PDF)
-                  </h4>
-                  <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                    A IA lerá o PDF anexado para atestar a tração da startup e preencher automaticamente seus indicadores operacionais.
-                  </p>
-                </div>
-                <div>
-                  <input
-                    ref={pdfInputRef}
-                    type="file"
-                    accept="application/pdf,.pdf"
-                    onChange={handleTractionPdfUpload}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    disabled={verifyingPdf}
-                    onClick={() => pdfInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#111827] px-4 py-3 text-xs font-extrabold text-[#FEC908] transition hover:bg-black disabled:opacity-60"
-                  >
-                    <Upload size={14} />
-                    {verifyingPdf
-                      ? "Lendo e atestando PDF com IA..."
-                      : form.tractionAttested
-                      ? "Substituir PDF atestado"
-                      : "Selecionar PDF do Atestado"}
-                  </button>
-                </div>
+                <span className="rounded-full bg-[#111827] px-3.5 py-1 text-xs font-extrabold text-[#FEC908]">
+                  Habilitado para Compras Corporativas
+                </span>
               </div>
+              <p className="mt-3 text-xs leading-5 text-[#475569]">
+                Sua pontuação na escala TRL atingiu maturidade de escala comercial (sistema implantado e homologado com clientes). Para certificar o estágio de <strong>Tração</strong> e liberar contratações de <strong>Compra Corporativa direta de grande porte</strong>, anexe seu <strong>Atestado de Capacidade Técnica (PDF)</strong> para validação pela IA.
+              </p>
 
-              {pdfFileName && (
-                <p className="mt-3 text-[11px] font-semibold text-[#475569]">
-                  Arquivo selecionado: <strong>{pdfFileName}</strong>
-                </p>
-              )}
-
-              {pdfError && (
-                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700">
-                  {pdfError}
-                </div>
-              )}
-
-              {form.tractionAttested && (
-                <div className="mt-4 space-y-3 rounded-xl border border-[#b9e6d0] bg-[#ebfaf2] p-4">
-                  <div className="flex items-center gap-2 text-xs font-extrabold text-[#166d48]">
-                    <CheckCircle2 size={16} /> Tração Atestada pela IA · Nível TRL {form.trlScore}/9
+              {/* Upload do Atestado PDF */}
+              <div className="mt-5 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] p-5">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                  <div>
+                    <h5 className="flex items-center gap-2 text-sm font-extrabold text-[#111827]">
+                      <FileText size={16} /> Comprovação Técnica — Anexar Atestado em PDF
+                    </h5>
+                    <p className="mt-1 text-xs text-[#64748b]">
+                      A IA analisará o documento para certificar a capacidade técnica e validar o TRL {computedTrl}/9.
+                    </p>
                   </div>
-                  <p className="text-xs leading-5 text-[#1e563d]">
-                    {form.tractionAttestationInfo ||
-                      "Documento técnico verificado com sucesso pela IA StartIn."}
+                  <div>
+                    <input
+                      ref={pdfInputRef}
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={handleTractionPdfUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      disabled={verifyingPdf}
+                      onClick={() => pdfInputRef.current?.click()}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#111827] px-4 py-3 text-xs font-extrabold text-[#FEC908] transition hover:bg-black disabled:opacity-60"
+                    >
+                      <Upload size={14} />
+                      {verifyingPdf
+                        ? "Lendo e atestando PDF com IA..."
+                        : form.tractionAttested
+                        ? "Substituir PDF atestado"
+                        : "Selecionar PDF do Atestado"}
+                    </button>
+                  </div>
+                </div>
+
+                {pdfFileName && (
+                  <p className="mt-3 text-[11px] font-semibold text-[#475569]">
+                    Arquivo selecionado: <strong>{pdfFileName}</strong>
                   </p>
-                  <div className="grid gap-2 pt-1 sm:grid-cols-2">
-                    <div className="rounded-lg bg-white/80 p-2.5 text-[11px] text-[#111827]">
-                      <span className="block font-bold text-[#64748b]">Maturidade preenchida</span>
-                      {form.productMaturity || `TRL ${form.trlScore}/9`}
-                    </div>
-                    <div className="rounded-lg bg-white/80 p-2.5 text-[11px] text-[#111827]">
-                      <span className="block font-bold text-[#64748b]">Tração / Clientes</span>
-                      {form.tractionCustomers || "Capacidade técnica comprovada"}
-                    </div>
+                )}
+
+                {pdfError && (
+                  <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700">
+                    {pdfError}
                   </div>
-                  {pdfHighlights.length > 0 && (
-                    <ul className="space-y-1 pt-1 text-[11px] text-[#1e563d]">
-                      {pdfHighlights.map((h, idx) => (
-                        <li key={idx}>• {h}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+                )}
+
+                {form.tractionAttested && (
+                  <div className="mt-4 space-y-3 rounded-xl border border-[#b9e6d0] bg-[#ebfaf2] p-4">
+                    <div className="flex items-center gap-2 text-xs font-extrabold text-[#166d48]">
+                      <CheckCircle2 size={16} /> Tração Atestada com Sucesso pela IA · TRL {form.trlScore}/9
+                    </div>
+                    <p className="text-xs leading-5 text-[#1e563d]">
+                      {form.tractionAttestationInfo ||
+                        "Documento técnico verificado com sucesso pela IA StartIn."}
+                    </p>
+                    <div className="grid gap-2 pt-1 sm:grid-cols-2">
+                      <div className="rounded-lg bg-white/80 p-2.5 text-[11px] text-[#111827]">
+                        <span className="block font-bold text-[#64748b]">Maturidade Homologada</span>
+                        {form.productMaturity || `TRL ${form.trlScore}/9 validado`}
+                      </div>
+                      <div className="rounded-lg bg-white/80 p-2.5 text-[11px] text-[#111827]">
+                        <span className="block font-bold text-[#64748b]">Clientes / Operação</span>
+                        {form.tractionCustomers || "Capacidade técnica comprovada"}
+                      </div>
+                    </div>
+                    {pdfHighlights.length > 0 && (
+                      <ul className="space-y-1 pt-1 text-[11px] text-[#1e563d]">
+                        {pdfHighlights.map((h, idx) => (
+                          <li key={idx}>• {h}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                {/* Opção para continuar em Validação caso não tenha o Atestado em mãos */}
+                {!form.tractionAttested && (
+                  <div className="mt-4 border-t border-[#e2e8f0] pt-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                    <span className="text-[11px] text-[#64748b]">
+                      Não possui o Atestado em PDF no momento?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleProceedAsValidacao}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#111827] hover:underline"
+                    >
+                      Continuar no estágio de Validação por enquanto <ArrowRight size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -1263,7 +1840,7 @@ export function Onboarding({
   const subtitles = [
     "Selecione a área tecnológica principal, localização e site da sua startup.",
     "Descreva o problema que sua startup resolve e estruture com nossa IA para o matchmaking.",
-    "Defina o momento atual (Validação ou Tração com escala TRL da NASA e Atestado Técnico).",
+    "Avaliação de maturidade com a escala TRL da NASA para definição automática do estágio (Validação ou Tração).",
   ];
 
   return (

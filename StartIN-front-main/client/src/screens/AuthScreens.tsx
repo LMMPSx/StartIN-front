@@ -61,6 +61,13 @@ export function Login({
       sideText="Editais, eventos, POCs e conexões corporativas em um só lugar, personalizados com IA."
     >
       <div>
+        <button
+          type="button"
+          onClick={() => go("landing")}
+          className="mb-6 flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black transition"
+        >
+          <ArrowLeft size={14} /> Voltar para a página inicial
+        </button>
         <p className="text-sm font-semibold text-gray-500">Bem-vinda à StartIn</p>
         <h2 className="mt-2 text-[28px] font-extrabold tracking-[-.05em] text-[#111827]">
           Entre na sua conta
@@ -107,11 +114,13 @@ export function Login({
 export function Signup({
   go,
   onAuthSuccess,
+  initialAccountType = "STARTUP",
 }: {
   go: (screen: Screen) => void;
   onAuthSuccess: () => void;
+  initialAccountType?: AccountType;
 }) {
-  const [accountType, setAccountType] = useState<AccountType>("STARTUP");
+  const [accountType, setAccountType] = useState<AccountType>(initialAccountType);
   const [form, setForm] = useState({
     name: "",
     cnpj: "",
@@ -185,12 +194,22 @@ export function Signup({
       }
     >
       <div>
-        <button
-          onClick={() => go("login")}
-          className="mb-6 flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black"
-        >
-          <ArrowLeft size={14} /> Voltar para login
-        </button>
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => go("landing")}
+            className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black transition"
+          >
+            <ArrowLeft size={14} /> Página inicial
+          </button>
+          <button
+            type="button"
+            onClick={() => go("login")}
+            className="flex items-center gap-1 text-xs font-bold text-[#111827] hover:underline"
+          >
+            Já tem conta? Entrar <ArrowRight size={13} />
+          </button>
+        </div>
         <h2 className="text-[28px] font-extrabold tracking-[-.05em] text-[#111827]">
           Crie sua conta
         </h2>

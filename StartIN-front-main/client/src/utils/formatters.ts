@@ -428,6 +428,9 @@ export function computeAuditedClientMatchScore(
   } else if (!stOppPrefs) {
     modalityScore = 4;
   }
+  if (tgType.includes("evento")) {
+    modalityScore = Math.max(modalityScore, 5);
+  }
 
   const stModel = normMatchText(startup.businessModel);
   const modelScore =
@@ -490,6 +493,10 @@ export function computeAuditedClientMatchScore(
     locationScore = 4;
   } else {
     locationScore = 1;
+  }
+
+  if (tgType.includes("evento") && locationScore >= 3) {
+    locationScore = Math.min(5, locationScore + 1);
   }
 
   return Math.max(

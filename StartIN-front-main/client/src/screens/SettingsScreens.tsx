@@ -8,6 +8,7 @@ import {
   ChevronDown,
   FileText,
   Plus,
+  Rocket,
   Shield,
   Sparkles,
   Target,
@@ -15,7 +16,7 @@ import {
   UserRound,
   X,
 } from "@/icons";
-import { BackButton, Field, PageTitle, PrimaryButton } from "@/components/startin/CommonUI";
+import { AiPromptTutorialGuide, BackButton, Field, PageTitle, PrimaryButton } from "@/components/startin/CommonUI";
 import {
   api,
   clearSession,
@@ -378,6 +379,8 @@ export function SubSettings({
   const [trlAnswers, setTrlAnswers] = useState<Record<string, "SIM" | "NAO">>({});
   const [verifyingPdf, setVerifyingPdf] = useState(false);
   const [pdfFileName, setPdfFileName] = useState("");
+  const [pdfHighlights, setPdfHighlights] = useState<string[]>([]);
+  const [showTrlModal, setShowTrlModal] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const [receiveRecs, setReceiveRecs] = useState(profile?.receiveAiRecommendations ?? true);
@@ -485,13 +488,18 @@ export function SubSettings({
       : ["POC", "Primeira Compra", "Editais", "Eventos"];
 
   const handleStageSwitch = (stage: "Validação" | "Tração") => {
-    setCurrentStage(stage);
     if (stage === "Validação") {
+      setCurrentStage("Validação");
       setSelectedOppTypes(["POC", "Primeira Compra", "Editais", "Eventos"]);
       setPrefType("POC, Primeira Compra, Editais, Eventos");
     } else {
-      setSelectedOppTypes(["Compra", "Editais", "Eventos"]);
-      setPrefType("Compra, Editais, Eventos");
+      if (tractionAttested) {
+        setCurrentStage("Tração");
+        setSelectedOppTypes(["Compra", "Editais", "Eventos"]);
+        setPrefType("Compra, Editais, Eventos");
+      } else {
+        setShowTrlModal(true);
+      }
     }
   };
 
@@ -600,6 +608,13 @@ export function SubSettings({
   const allTrlAnswered = Object.keys(trlAnswers).length === NASA_TRL_QUESTIONS.length;
   const computedTrlScore = calculateTrlFromAnswers(trlAnswers);
 
+  const handleAnswerTrlInSettings = (questionId: string, answer: "SIM" | "NAO") => {
+    const updated = { ...trlAnswers, [questionId]: answer };
+    setTrlAnswers(updated);
+    const score = calculateTrlFromAnswers(updated);
+    setTrlScore(score);
+  };
+
   const handleTractionPdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -629,12 +644,14 @@ export function SubSettings({
           setAccountErrorMsg(
             res.attestationSummary || "Não foi possível atestar tração com o PDF enviado."
           );
+          setTractionAttested(false);
           return;
         }
+        setPdfHighlights(res.extractedHighlights || []);
         setTractionAttested(true);
         setTrlScore(res.trlLevel || Math.max(7, computedTrlScore));
         setTractionAttestationInfo(res.attestationSummary);
-        setAccountSavedMsg("Atestado Técnico verificado pela IA! Salve abaixo para aplicar.");
+        setAccountSavedMsg("Atestado Técnico verificado pela IA com sucesso!");
       } catch (err: any) {
         setAccountErrorMsg(err.message || "Erro ao verificar PDF com IA.");
       } finally {
@@ -1073,6 +1090,7 @@ export function SubSettings({
 
               {/* Problema que resolve com IA (sem descrição curta!) */}
               <div className="md:col-span-2">
+                <AiPromptTutorialGuide role="startup" />
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-[#203754]">
                     Problema que resolve (estruturado para o matchmaking da IA)
@@ -1147,6 +1165,7 @@ export function SubSettings({
                 })}
               </div>
 
+              {/* Card de Tração Atestada */}
               {currentStage === "Tração" && tractionAttested && (
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#b9e6d0] bg-[#ebfaf2] px-4 py-3">
                   <div className="flex items-center gap-2 text-xs font-bold text-[#166d48]">
@@ -1156,75 +1175,29 @@ export function SubSettings({
                       {tractionAttestationInfo || "Atestado de Capacidade Técnica validado."}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTrlModal(true)}
+                    className="text-xs font-bold text-[#166d48] underline hover:text-[#114b32] transition"
+                  >
+                    Recalcular TRL / Atualizar Atestado
+                  </button>
                 </div>
               )}
 
+              {/* Card de Solicitação de Tração Sem Atestado */}
               {currentStage === "Tração" && !tractionAttested && (
-                <div className="mt-4 space-y-4 rounded-xl border border-[#dbe3ea] bg-[#f8fafc] p-4">
-                  <p className="text-xs font-extrabold text-[#111827]">
-                    Comprovação de Tração — Responda à Escala TRL da NASA e anexe seu Atestado Técnico (PDF)
-                  </p>
-                  <div className="space-y-2.5">
-                    {NASA_TRL_QUESTIONS.map((q) => {
-                      const ans = trlAnswers[q.id];
-                      return (
-                        <div
-                          key={q.id}
-                          className="flex flex-col justify-between gap-2 rounded-lg border border-[#e2e8f0] bg-white p-3 sm:flex-row sm:items-center"
-                        >
-                          <span className="text-xs text-[#334155]">
-                            <strong>{q.badge}:</strong> {q.question}
-                          </span>
-                          <div className="flex shrink-0 gap-1.5">
-                            {(["SIM", "NAO"] as const).map((opt) => (
-                              <button
-                                key={opt}
-                                type="button"
-                                onClick={() =>
-                                  setTrlAnswers((prev) => ({ ...prev, [q.id]: opt }))
-                                }
-                                className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${
-                                  ans === opt
-                                    ? opt === "SIM"
-                                      ? "bg-[#111827] text-[#FEC908]"
-                                      : "bg-red-600 text-white"
-                                    : "bg-gray-100 text-gray-700"
-                                }`}
-                              >
-                                {opt === "SIM" ? "Sim" : "Não"}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <div className="text-xs font-medium text-amber-900">
+                    O estágio <strong>Tração</strong> requer comprovação pela escala TRL da NASA (nível 7 a 9) e envio do Atestado Técnico em PDF.
                   </div>
-                  {allTrlAnswered && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#cbd5e1] bg-white p-3.5">
-                      <span className="flex items-center gap-2 text-xs font-bold text-[#111827]">
-                        <FileText size={15} /> Anexe o PDF do Atestado de Capacidade Técnica
-                        {pdfFileName ? ` (${pdfFileName})` : ""}
-                      </span>
-                      <div>
-                        <input
-                          ref={pdfInputRef}
-                          type="file"
-                          accept="application/pdf,.pdf"
-                          onChange={handleTractionPdfUpload}
-                          className="hidden"
-                        />
-                        <button
-                          type="button"
-                          disabled={verifyingPdf}
-                          onClick={() => pdfInputRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#111827] px-3.5 py-2 text-xs font-extrabold text-[#FEC908]"
-                        >
-                          <Upload size={13} />
-                          {verifyingPdf ? "Atestando PDF com IA..." : "Enviar PDF"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowTrlModal(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#111827] px-4 py-2 text-xs font-bold text-[#FEC908] hover:bg-black transition shadow-xs"
+                  >
+                    <Sparkles size={13} /> Abrir TRL da NASA & PDF
+                  </button>
                 </div>
               )}
             </div>
@@ -1577,6 +1550,255 @@ export function SubSettings({
           </>
         )}
       </section>
+
+      {/* =====================================================================
+          MODAL BOX: ESCALA TRL DA NASA PARA COMPROVAÇÃO DE TRAÇÃO (IGUAL AO CADASTRO)
+      ===================================================================== */}
+      {showTrlModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white p-5 md:p-7 shadow-2xl space-y-6">
+            {/* Header da Modal */}
+            <div className="flex flex-col justify-between gap-3 border-b border-[#e2e8f0] pb-4 sm:flex-row sm:items-center">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-[#111827] px-2.5 py-1 text-[10px] font-extrabold text-[#FEC908]">
+                    METODOLOGIA OFICIAL
+                  </span>
+                  <h3 className="text-base font-extrabold text-[#111827]">
+                    Escala TRL da NASA — Definição de Maturidade & Tração
+                  </h3>
+                </div>
+                <p className="mt-1.5 text-xs leading-5 text-[#64748b]">
+                  Responda às 5 perguntas abaixo. A pontuação definirá sua maturidade: níveis 1 a 6 qualificam para <strong>Validação</strong>; níveis 7 a 9 habilitam <strong>Tração</strong> mediante envio do Atestado de Capacidade Técnica (PDF).
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                <div className="flex items-center gap-2 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] px-3.5 py-1.5">
+                  <span className="text-[11px] font-bold text-[#64748b]">TRL Calculado:</span>
+                  <span className="text-sm font-black text-[#111827]">
+                    {computedTrlScore}/9
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTrlModal(false)}
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
+                  title="Fechar"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* 5 Questões TRL da NASA */}
+            <div className="space-y-3">
+              {NASA_TRL_QUESTIONS.map((q) => {
+                const ans = trlAnswers[q.id];
+                return (
+                  <div
+                    key={q.id}
+                    className="flex flex-col justify-between gap-3 rounded-xl border border-[#e2e8f0] bg-[#fcfdfe] p-4 transition hover:border-[#cbd5e1] md:flex-row md:items-center"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-[#fef9c3] px-2 py-0.5 text-[10px] font-extrabold text-[#854d0e]">
+                          {q.badge}
+                        </span>
+                        <span className="text-xs font-extrabold text-[#111827]">{q.title}</span>
+                      </div>
+                      <p className="text-xs leading-5 text-[#5b6b79]">{q.question}</p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      {(["SIM", "NAO"] as const).map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => handleAnswerTrlInSettings(q.id, opt)}
+                          className={`rounded-lg px-4 py-2 text-xs font-extrabold transition ${
+                            ans === opt
+                              ? opt === "SIM"
+                                ? "bg-[#111827] text-[#FEC908] shadow-xs"
+                                : "bg-red-600 text-white shadow-xs"
+                              : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {opt === "SIM" ? "Sim" : "Não"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Resultado do TRL quando respondido */}
+            {allTrlAnswered && (
+              <div className="space-y-4 pt-2">
+                {computedTrlScore < 7 ? (
+                  /* Card Validação */
+                  <div className="rounded-2xl border-2 border-[#16734d] bg-[#f0fbf5] p-5 shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#16734d] text-white">
+                        <Check size={20} strokeWidth={3} />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#16734d]">
+                          Estágio Definido Pela TRL
+                        </span>
+                        <h4 className="text-sm font-extrabold text-[#111827]">
+                          Validação — Nível TRL {computedTrlScore}/9
+                        </h4>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-[#24523c]">
+                      Sua pontuação na escala TRL comprova que sua solução está na fase de teste, protótipo funcional ou MVP (TRL 1 a 6). Sua startup está qualificada para receber <strong>POCs corporativas</strong>, <strong>Primeira Compra</strong>, <strong>Editais</strong> e <strong>Eventos</strong>. Para atingir <strong>Tração</strong>, é necessário atingir TRL 7 ou superior.
+                    </p>
+                  </div>
+                ) : (
+                  /* Card Tração com Upload de PDF */
+                  <div className="rounded-2xl border-2 border-[#111827] bg-white p-5 shadow-xs space-y-4">
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#111827] text-[#FEC908]">
+                          <Rocket size={22} />
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#b45309]">
+                            Estágio Definido Pela TRL
+                          </span>
+                          <h4 className="text-base font-extrabold text-[#111827]">
+                            Tração — Nível TRL {computedTrlScore}/9
+                          </h4>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-[#111827] px-3.5 py-1 text-xs font-extrabold text-[#FEC908]">
+                        Habilitado para Compras Corporativas
+                      </span>
+                    </div>
+
+                    <p className="text-xs leading-5 text-[#475569]">
+                      Sua pontuação atingiu maturidade de escala comercial (TRL {computedTrlScore}/9). Para homologar o estágio de <strong>Tração</strong> e liberar contratações de <strong>Compra Corporativa direta</strong>, anexe seu <strong>Atestado de Capacidade Técnica (PDF)</strong> para validação por IA:
+                    </p>
+
+                    {/* Bloco de Upload do PDF */}
+                    <div className="rounded-xl border border-[#cbd5e1] bg-[#f8fafc] p-4">
+                      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                        <div>
+                          <span className="flex items-center gap-2 text-xs font-bold text-[#111827]">
+                            <FileText size={16} /> Atestado de Capacidade Técnica (PDF)
+                            {pdfFileName ? ` (${pdfFileName})` : ""}
+                          </span>
+                          <p className="mt-1 text-[11px] text-[#64748b]">
+                            Documento comprovando homologação, clientes ativos ou volume operacional.
+                          </p>
+                        </div>
+                        <div>
+                          <input
+                            ref={pdfInputRef}
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            onChange={handleTractionPdfUpload}
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            disabled={verifyingPdf}
+                            onClick={() => pdfInputRef.current?.click()}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#111827] px-4 py-2.5 text-xs font-extrabold text-[#FEC908] transition hover:bg-black disabled:opacity-60"
+                          >
+                            <Upload size={14} />
+                            {verifyingPdf ? "Atestando PDF com IA..." : "Anexar Atestado PDF"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Status de aprovação do PDF */}
+                      {tractionAttested && (
+                        <div className="mt-3.5 rounded-lg border border-[#b9e6d0] bg-[#ebfaf2] p-3 text-xs font-bold text-[#166d48] flex items-center gap-2">
+                          <CheckCircle2 size={16} />
+                          <span>
+                            Tração atestada com sucesso pela IA! TRL {trlScore}/9 validado.
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Destaques extraídos pela IA */}
+                      {pdfHighlights.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {pdfHighlights.map((hl, i) => (
+                            <span
+                              key={i}
+                              className="rounded-full bg-white border border-[#c6ecd7] px-3 py-1 text-[11px] font-semibold text-[#166d48]"
+                            >
+                              ✓ {hl}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mensagem de Erro se houver */}
+            {accountErrorMsg && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
+                {accountErrorMsg}
+              </div>
+            )}
+
+            {/* Rodapé da Modal com Botões */}
+            <div className="flex items-center justify-between border-t border-[#edf0f2] pt-4">
+              <button
+                type="button"
+                onClick={() => setShowTrlModal(false)}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+
+              {computedTrlScore >= 7 && tractionAttested ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStage("Tração");
+                    setSelectedOppTypes(["Compra", "Editais", "Eventos"]);
+                    setPrefType("Compra, Editais, Eventos");
+                    setShowTrlModal(false);
+                    setAccountSavedMsg("Estágio Tração confirmado com sucesso! Salve os dados da conta abaixo para persistir.");
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#111827] px-5 py-2.5 text-xs font-extrabold text-[#FEC908] hover:bg-black transition shadow-sm"
+                >
+                  <Check size={14} /> Confirmar Estágio Tração
+                </button>
+              ) : computedTrlScore < 7 && allTrlAnswered ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStage("Validação");
+                    setSelectedOppTypes(["POC", "Primeira Compra", "Editais", "Eventos"]);
+                    setPrefType("POC, Primeira Compra, Editais, Eventos");
+                    setShowTrlModal(false);
+                    setAccountSavedMsg("Estágio Validação mantido (TRL 1 a 6).");
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#16734d] px-5 py-2.5 text-xs font-extrabold text-white hover:bg-[#12583a] transition shadow-sm"
+                >
+                  <Check size={14} /> Manter Estágio Validação
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="rounded-lg bg-gray-200 px-5 py-2.5 text-xs font-bold text-gray-500 cursor-not-allowed"
+                >
+                  {allTrlAnswered ? "Envie o PDF para confirmar Tração" : "Responda às 5 perguntas TRL"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
