@@ -5,6 +5,90 @@ export function getInitials(name?: string): string {
   return name.trim().slice(0, 2).toUpperCase();
 }
 
+/**
+ * Formata estritamente como CNPJ (XX.XXX.XXX/XXXX-XX), limitando a exatos 14 dígitos (18 caracteres com pontuação).
+ */
+export function formatCNPJ(raw?: string): string {
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "").slice(0, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  if (digits.length <= 12) {
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  }
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
+}
+
+/**
+ * Valida se o CNPJ possui exatos 14 dígitos e dígitos verificadores autênticos (algoritmo oficial da Receita Federal),
+ * rejeitando sequências repetidas ou inválidas.
+ */
+export function isValidCNPJ(raw?: string): boolean {
+  if (!raw) return false;
+  const cnpj = raw.replace(/\D/g, "");
+  if (cnpj.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(cnpj)) return false;
+
+  const calcDigit = (base: string, weights: number[]): number => {
+    let sum = 0;
+    for (let i = 0; i < weights.length; i++) {
+      sum += Number(base[i]) * weights[i];
+    }
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  const weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+
+  const d1 = calcDigit(cnpj.slice(0, 12), weights1);
+  if (d1 !== Number(cnpj[12])) return false;
+
+  const d2 = calcDigit(cnpj.slice(0, 13), weights2);
+  if (d2 !== Number(cnpj[13])) return false;
+
+  return true;
+}
+
+/**
+ * Formata telefone brasileiro no padrão (DD) 9XXXX-XXXX ou (DD) XXXX-XXXX (máx 11 dígitos).
+ */
+export function formatPhoneBR(raw?: string): string {
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "").slice(0, 11);
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+}
+
+/**
+ * Valida se o telefone brasileiro possui DDD autêntico (11 a 99) e 10 ou 11 dígitos não repetidos.
+ */
+export function isValidPhoneBR(raw?: string): boolean {
+  if (!raw) return false;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length !== 10 && digits.length !== 11) return false;
+  if (/^(\d)\1+$/.test(digits)) return false;
+  const ddd = Number(digits.slice(0, 2));
+  if (ddd < 11 || ddd > 99) return false;
+  if (digits.length === 11 && digits[2] !== "9") return false;
+  return true;
+}
+
+/**
+ * Valida formato autêntico de e-mail corporativo/profissional.
+ */
+export function isValidEmail(raw?: string): boolean {
+  if (!raw) return false;
+  const trimmed = raw.trim();
+  return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(trimmed);
+}
+
 export function formatOppType(type?: string): string {
   if (!type) return "Edital";
   const upper = type.trim().toUpperCase();
@@ -506,4 +590,189 @@ export function computeAuditedClientMatchScore(
       areaScore + techScore + stageTrlScore + modalityModelScore + semanticScore + locationScore
     )
   );
+}
+
+const BRAZIL_STATE_TO_UF: Record<string, string> = {
+  acre: "AC",
+  alagoas: "AL",
+  amapa: "AP",
+  amazonas: "AM",
+  bahia: "BA",
+  ceara: "CE",
+  "distrito federal": "DF",
+  "espirito santo": "ES",
+  goias: "GO",
+  maranhao: "MA",
+  "mato grosso": "MT",
+  "mato grosso do sul": "MS",
+  "minas gerais": "MG",
+  para: "PA",
+  paraiba: "PB",
+  parana: "PR",
+  pernambuco: "PE",
+  piaui: "PI",
+  "rio de janeiro": "RJ",
+  "rio grande do norte": "RN",
+  "rio grande do sul": "RS",
+  rondonia: "RO",
+  roraima: "RR",
+  "santa catarina": "SC",
+  "sao paulo": "SP",
+  sergipe: "SE",
+  tocantins: "TO",
+};
+
+const VALID_UFS = new Set(Object.values(BRAZIL_STATE_TO_UF));
+
+function resolveStateToUf(rawState?: string): string {
+  if (!rawState) return "";
+  const cleaned = rawState
+    .replace(/^BR-/i, "")
+    .replace(/\b(brasil|brazil)\b/gi, "")
+    .trim();
+  if (!cleaned) return "";
+  const upper = cleaned.toUpperCase();
+  if (upper.length === 2 && VALID_UFS.has(upper)) {
+    return upper;
+  }
+  const norm = normMatchText(cleaned);
+  if (BRAZIL_STATE_TO_UF[norm]) {
+    return BRAZIL_STATE_TO_UF[norm];
+  }
+  for (const [stateName, uf] of Object.entries(BRAZIL_STATE_TO_UF)) {
+    if (norm.includes(stateName)) {
+      return uf;
+    }
+  }
+  return upper.length <= 3 ? upper : "";
+}
+
+/**
+ * Normaliza qualquer string de localização para exibir SOMENTE "Cidade, UF"
+ * (ex: "Recife, Pernambuco, Brasil" -> "Recife, PE"; "São Paulo - SP · Brasil" -> "São Paulo, SP").
+ */
+export function formatCityStateOnly(raw?: string | null): string {
+  if (!raw) return "";
+  let cleaned = raw
+    .replace(/[·•|]/g, ",")
+    .replace(/\s+-\s+/g, ", ")
+    .replace(/\s*\/\s*/g, ", ")
+    .replace(/\([^)]*\)/g, "")
+    .trim();
+
+  const parts = cleaned
+    .split(",")
+    .map((p) => p.trim())
+    .filter(
+      (p) =>
+        p.length > 0 &&
+        !/^(brasil|brazil|remoto|nacional|todo o brasil|100% remoto)$/i.test(p)
+    );
+
+  if (parts.length === 0) return "";
+
+  if (parts.length === 1) {
+    const single = parts[0];
+    const matchInlineUf = single.match(/^(.+?)\s+([A-Za-z]{2})$/);
+    if (matchInlineUf && VALID_UFS.has(matchInlineUf[2].toUpperCase())) {
+      return `${matchInlineUf[1].trim()}, ${matchInlineUf[2].toUpperCase()}`;
+    }
+    return single;
+  }
+
+  const city = parts[0];
+  for (let i = 1; i < parts.length; i++) {
+    const uf = resolveStateToUf(parts[i]);
+    if (uf) {
+      return `${city}, ${uf}`;
+    }
+  }
+
+  const fallbackUf = resolveStateToUf(parts[1]);
+  return fallbackUf ? `${city}, ${fallbackUf}` : `${city}, ${parts[1]}`;
+}
+
+/**
+ * Obtém a localização exata do usuário via navegador (Geolocation API + Reverse Geocoding)
+ * e retorna estritamente no formato "Cidade, UF" (ex: "Recife, PE").
+ */
+export async function detectBrowserCityState(): Promise<string> {
+  const reverseGeocodeCoords = async (lat: number, lon: number): Promise<string> => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=pt-BR`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const addr = data?.address || {};
+        const city =
+          addr.city ||
+          addr.town ||
+          addr.municipality ||
+          addr.village ||
+          addr.city_district ||
+          addr.suburb ||
+          "";
+        const isoUf = (addr["ISO3166-2-lvl4"] || "").replace(/^BR-/i, "");
+        const uf = resolveStateToUf(isoUf || addr.state || "");
+        if (city && uf) return `${city}, ${uf}`;
+        if (city) return formatCityStateOnly(`${city}, ${addr.state || ""}`);
+      }
+    } catch {
+      // Continua para o fallback
+    }
+
+    try {
+      const res = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=pt`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const city = data?.city || data?.locality || "";
+        const uf = resolveStateToUf(
+          data?.principalSubdivisionCode || data?.principalSubdivision || ""
+        );
+        if (city && uf) return `${city}, ${uf}`;
+        if (city) return formatCityStateOnly(`${city}, ${data?.principalSubdivision || ""}`);
+      }
+    } catch {
+      // Continua para o fallback
+    }
+
+    return "";
+  };
+
+  if (typeof window !== "undefined" && "geolocation" in navigator) {
+    try {
+      const coords = await new Promise<GeolocationCoordinates>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(pos.coords),
+          (err) => reject(err),
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+        );
+      });
+      const exactCityUf = await reverseGeocodeCoords(coords.latitude, coords.longitude);
+      if (exactCityUf) return exactCityUf;
+    } catch {
+      // Se o usuário negar permissão de GPS ou der timeout, usa fallback de geolocalização do navegador
+    }
+  }
+
+  try {
+    const res = await fetch(
+      "https://api.bigdatacloud.net/data/reverse-geocode-client?localityLanguage=pt"
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const city = data?.city || data?.locality || "";
+      const uf = resolveStateToUf(
+        data?.principalSubdivisionCode || data?.principalSubdivision || ""
+      );
+      if (city && uf) return `${city}, ${uf}`;
+    }
+  } catch {
+    // ignore
+  }
+
+  return "";
 }

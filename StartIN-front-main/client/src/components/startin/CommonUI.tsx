@@ -1,7 +1,12 @@
-import React, { useState } from "react";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Sparkles } from "@/icons";
+import React, { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, MapPin, Sparkles } from "@/icons";
 import type { OpportunityItem } from "@/lib/api";
-import { formatOppType, getBadgeColorByType } from "@/utils/formatters";
+import {
+  detectBrowserCityState,
+  formatCityStateOnly,
+  formatOppType,
+  getBadgeColorByType,
+} from "@/utils/formatters";
 
 export function BackButton({
   label = "Voltar",
@@ -60,6 +65,104 @@ export function Field({
             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         )}
+      </div>
+    </label>
+  );
+}
+
+export function LocationField({
+  label = "Localização (Cidade, UF)",
+  placeholder = "Ex: Recife, PE",
+  value,
+  onChange,
+  autoDetect = true,
+}: {
+  label?: string;
+  placeholder?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+  autoDetect?: boolean;
+}) {
+  const [detecting, setDetecting] = useState(false);
+  const userEditedRef = useRef(false);
+  const autoDetectedRef = useRef(false);
+  const detectedLocationRef = useRef("");
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const handleDetectLocation = async (isAuto = false) => {
+    setDetecting(true);
+    try {
+      const detected = await detectBrowserCityState();
+      if (detected) {
+        const cleanDetected = formatCityStateOnly(detected);
+        detectedLocationRef.current = cleanDetected;
+        if (!isAuto || !userEditedRef.current) {
+          onChangeRef.current?.(cleanDetected);
+        }
+      }
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!autoDetect || autoDetectedRef.current) return;
+    autoDetectedRef.current = true;
+    handleDetectLocation(true);
+  }, [autoDetect]);
+
+  useEffect(() => {
+    if (userEditedRef.current) return;
+    if (!value || /^(brasil|brazil|remoto|nacional)$/i.test(value.trim())) {
+      if (detectedLocationRef.current) {
+        onChangeRef.current?.(detectedLocationRef.current);
+      }
+      return;
+    }
+    const cleaned = formatCityStateOnly(value);
+    if (cleaned && cleaned !== value) {
+      onChangeRef.current?.(cleaned);
+    }
+  }, [value]);
+
+  return (
+    <label className="block">
+      <span className="startin-field-label">{label}</span>
+      <div className="relative">
+        <input
+          type="text"
+          value={value ?? ""}
+          onChange={(e) => {
+            userEditedRef.current = true;
+            onChange?.(e.target.value);
+          }}
+          onBlur={() => {
+            if (value && value.trim()) {
+              const formatted = formatCityStateOnly(value);
+              if (formatted && formatted !== value) {
+                onChange?.(formatted);
+              }
+            }
+          }}
+          placeholder={placeholder}
+          className="startin-input pr-9 text-xs transition"
+        />
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            userEditedRef.current = false;
+            handleDetectLocation(false);
+          }}
+          disabled={detecting}
+          title={detecting ? "Detectando localização..." : "Puxar localização atual (Cidade, UF)"}
+          className={`absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 transition hover:bg-gray-100 hover:text-[#111827] ${
+            detecting ? "animate-pulse text-[#111827]" : "text-gray-400"
+          }`}
+        >
+          <MapPin size={15} />
+        </button>
       </div>
     </label>
   );
@@ -194,13 +297,26 @@ export function OpportunityCard({
 // =========================================================================
 export function AiPromptTutorialGuide({
   role = "company",
+  fieldContext = "bio",
   defaultExpanded = true,
 }: {
-  role?: "company" | "startup";
+  role?: "company" | "startup" | "provider";
+  fieldContext?: "bio" | "services" | "project";
   defaultExpanded?: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const isCompany = role === "company";
+  const isProvider = role === "provider";
+
+  const headerSubtitle = isCompany
+    ? "Como descrever seus desafios para a IA"
+    : isProvider
+    ? fieldContext === "project"
+      ? "Como descrever seu case ou projeto para a IA"
+      : fieldContext === "services"
+      ? "Como descrever sua experiência e serviços para a IA"
+      : "Como descrever sua atuação profissional para a IA"
+    : "Como descrever seu problema e solução para a IA";
 
   return (
     <div className="relative mb-3 overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white p-4 sm:p-5 shadow-xs transition">
@@ -211,9 +327,7 @@ export function AiPromptTutorialGuide({
             Mini Tutorial · Guia de Estruturação com IA
           </span>
           <span className="text-xs font-bold text-[#111827]">
-            {isCompany
-              ? "Como descrever seus desafios para a IA"
-              : "Como descrever seu problema e solução para a IA"}
+            {headerSubtitle}
           </span>
         </div>
 
@@ -229,17 +343,19 @@ export function AiPromptTutorialGuide({
 
       {isExpanded && (
         <div className="relative z-10 mt-3.5 space-y-3">
-          <p className="text-xs font-medium text-[#475569] leading-relaxed">
-            {isCompany ? (
-              <>
-                A IA do StartIn <strong>lê com profundidade</strong> o que você escrever abaixo para articular uma narrativa executiva personalizada e extrair as tags que conectam sua empresa às startups certas. Para um resultado de excelência, mencione:
-              </>
-            ) : (
-              <>
-                A IA do StartIn <strong>analisa a essência</strong> do seu rascunho para montar uma apresentação técnica coesa e atraente para editais e grandes empresas. Para um resultado de excelência, mencione:
-              </>
-            )}
-          </p>
+          {!isProvider && (
+            <p className="text-xs font-medium text-[#475569] leading-relaxed">
+              {isCompany ? (
+                <>
+                  A IA do StartIn <strong>lê com profundidade</strong> o que você escrever abaixo para articular uma narrativa executiva personalizada e extrair as tags que conectam sua empresa às startups certas. Para um resultado de excelência, mencione:
+                </>
+              ) : (
+                <>
+                  A IA do StartIn <strong>analisa a essência</strong> do seu rascunho para montar uma apresentação técnica coesa e atraente para editais e grandes empresas. Para um resultado de excelência, mencione:
+                </>
+              )}
+            </p>
+          )}
 
           <div className="grid gap-2.5 sm:grid-cols-2">
             {isCompany ? (
@@ -300,6 +416,124 @@ export function AiPromptTutorialGuide({
                   </p>
                 </div>
               </>
+            ) : isProvider ? (
+              fieldContext === "project" ? (
+                <>
+                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                        1
+                      </span>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                        Desafio ou Problema do Cliente
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                      Qual necessidade ou gargalo a startup enfrentava (ex: <strong>baixa presença no Instagram, necessidade de MVP rápido ou baixa conversão</strong>)?
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                        2
+                      </span>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                        Sua Atuação & Estratégia
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                      O que você executou na prática e quais <strong>canais, métodos ou ferramentas</strong> aplicou na solução?
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                        3
+                      </span>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                        Entregáveis Construídos
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                      O que foi entregue ao final (ex: <strong>posicionamento de marca, campanhas de growth, plataforma web, design system</strong>)?
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                        4
+                      </span>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                        Resultados & Impacto Real
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                      Qual evolução o projeto gerou (ex: <strong>escalabilidade da marca, ganho de alcance e vendas, redução de tempo ou mais retenção</strong>)?
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                        1
+                      </span>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                        Sua Especialidade & Foco
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                      Com o que você trabalha e qual é sua frente principal (ex: <strong>Marketing e crescimento de marca, Desenvolvimento, UX/UI, Jurídico, Financeiro</strong>)?
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                        2
+                      </span>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                        Canais, Ferramentas & Métodos
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                      Quais plataformas, tecnologias ou estratégias você utiliza (ex: <strong>Instagram, Tráfego Pago, Branding, React, Figma, Sprints Ágeis</strong>)?
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                        3
+                      </span>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                        Como Ajuda as Startups
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                      Qual necessidade você resolve (ex: <strong>escalabilidade da marca, aquisição de clientes, construção de MVP, estruturação jurídica/financeira</strong>)?
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-black text-[#FEC908]">
+                        4
+                      </span>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#111827]">
+                        Diferencial & Resultados
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#475569] leading-snug">
+                      Qual entrega ou impacto você proporciona (ex: <strong>autoridade digital, engajamento qualificado, entregas rápidas e foco em conversão</strong>)?
+                    </p>
+                  </div>
+                </>
+              )
             ) : (
               <>
                 <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3.5 shadow-2xs hover:border-[#111827]/30 transition">
@@ -369,6 +603,8 @@ export function AiPromptTutorialGuide({
             <span className="text-[#475569]">
               {isCompany
                 ? "Escreva com suas próprias palavras no campo abaixo. Ao clicar em 'Melhorar desafios e demandas com IA', o motor integrará 100% das suas ideias em parágrafos executivos fluidos e preencherá as tags de matchmaking automaticamente."
+                : isProvider
+                ? "Escreva com suas próprias palavras no campo abaixo. Ao clicar em 'Melhorar com IA', o motor reescreverá o texto em 1ª pessoa (como se você mesmo tivesse escrito), articulando suas informações com coesão e sem frases genéricas em 3ª pessoa."
                 : "Escreva com suas próprias palavras no campo abaixo. Ao clicar em 'Melhorar texto com IA', o motor integrará 100% das suas ideias em uma apresentação técnica fluida, sem templates robóticos e com tags prontas para editais e empresas."}
             </span>
           </div>

@@ -4,6 +4,7 @@ import {
   Bell,
   Bookmark,
   Bot,
+  Briefcase,
   Building2,
   ChevronDown,
   FilePlus2,
@@ -22,13 +23,16 @@ import {
 import { clearSession, type NotificationItem } from "@/lib/api";
 import {
   NAV_ITEMS_COMPANY,
+  NAV_ITEMS_PROVIDER,
   NAV_ITEMS_STARTUP,
+  NAV_ITEMS_STARTUP_TRACAO,
   type AccountType,
   type Screen,
 } from "@/types/startin";
 import { getInitials } from "@/utils/formatters";
 
 const SCREEN_BREADCRUMB_LABELS: Record<Screen, string> = {
+  landing: "Início",
   login: "Login",
   signup: "Criar conta",
   recovery: "Recuperar acesso",
@@ -61,6 +65,23 @@ const SCREEN_BREADCRUMB_LABELS: Record<Screen, string> = {
   "company-matches-history": "Histórico de Matches",
   "interest-success": "Interesse registrado",
   "opportunity-success": "Oportunidade publicada",
+  "provider-onboarding": "Onboarding do Prestador",
+  "provider-dashboard": "Home",
+  "explore-startups": "Recomendações",
+  "explore-providers": "Explorar prestadores",
+  "provider-detail": "Perfil do prestador",
+  "request-connection": "Solicitar conexão",
+  "connection-sent": "Solicitação enviada",
+  connections: "Conexões & Solicitações",
+  "connection-received": "Solicitação recebida",
+  "connection-accepted": "Conexão aceita",
+  "connection-rejected": "Conexão recusada",
+  "saved-providers": "Prestadores salvos",
+  "saved-startups": "Oportunidades salvas",
+  "provider-profile": "Meu perfil",
+  "my-service-demands": "Demandas p/ prestadores",
+  "create-service-demand": "Lançar demanda de serviço",
+  "edit-service-demand": "Editar demanda de serviço",
 };
 
 export function AuthShell({
@@ -116,6 +137,7 @@ export function Sidebar({
   onClose,
   mobileOpen = false,
   accountType = "STARTUP",
+  isTracao = false,
   matchesCount,
   savedCount = 0,
   onLogout,
@@ -125,12 +147,22 @@ export function Sidebar({
   onClose: () => void;
   mobileOpen?: boolean;
   accountType?: AccountType;
+  isTracao?: boolean;
   matchesCount: number;
   savedCount?: number;
   onLogout?: () => void;
 }) {
   const isCompany = accountType === "COMPANY";
-  const navItems = isCompany ? NAV_ITEMS_COMPANY : NAV_ITEMS_STARTUP;
+  const isProvider = accountType === "PROVIDER";
+  const navItems = isProvider
+    ? NAV_ITEMS_PROVIDER
+    : isCompany
+    ? NAV_ITEMS_COMPANY
+    : isTracao
+    ? NAV_ITEMS_STARTUP_TRACAO
+    : NAV_ITEMS_STARTUP;
+
+  const roleLabel = isProvider ? "Prestador" : isCompany ? "Empresa" : "Startup";
 
   return (
     <aside
@@ -155,7 +187,7 @@ export function Sidebar({
                 : "bg-[#FEC908] text-[#111827]"
             }`}
           >
-            {isCompany ? "Empresa" : "Startup"}
+            {roleLabel}
           </span>
         </button>
         <button
@@ -207,21 +239,21 @@ export function Sidebar({
       </nav>
       <div className="mt-auto px-4 pb-6">
         <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-gray-400">
-          Conta ({isCompany ? "Empresa" : "Startup"})
+          Conta ({roleLabel})
         </p>
         <button
           onClick={() => {
-            go(isCompany ? "company-profile" : "account");
+            go(isProvider ? "provider-profile" : isCompany ? "company-profile" : "account");
             onClose();
           }}
           className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-            screen === "account" || screen === "startup" || screen === "company-profile"
+            screen === "account" || screen === "startup" || screen === "company-profile" || screen === "provider-profile"
               ? "bg-white text-[#111827] shadow-xs"
               : "text-gray-300 hover:bg-white/10 hover:text-white"
           }`}
         >
-          {isCompany ? <Building2 size={17} /> : <UserRound size={17} />}
-          {isCompany ? "Minha empresa" : "Conta e acesso"}
+          {isProvider ? <Briefcase size={17} /> : isCompany ? <Building2 size={17} /> : <UserRound size={17} />}
+          {isProvider ? "Meu perfil" : isCompany ? "Minha empresa" : "Conta e acesso"}
         </button>
         <button
           onClick={() => {
@@ -262,6 +294,7 @@ export function AppShell({
   startupName,
   avatarUrl,
   accountType = "STARTUP",
+  isTracao = false,
   matchesCount,
   savedCount = 0,
   notifications = [],
@@ -274,6 +307,7 @@ export function AppShell({
   startupName: string;
   avatarUrl?: string;
   accountType?: AccountType;
+  isTracao?: boolean;
   matchesCount: number;
   savedCount?: number;
   notifications?: NotificationItem[];
@@ -287,6 +321,7 @@ export function AppShell({
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const notifHoverTimerRef = useRef<number | null>(null);
   const isCompany = accountType === "COMPANY";
+  const isProvider = accountType === "PROVIDER";
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const unreadBadgeLabel = unreadCount > 10 ? "10+" : String(unreadCount);
@@ -324,7 +359,15 @@ export function AppShell({
     };
   }, []);
 
-  const breadcrumbLabel = SCREEN_BREADCRUMB_LABELS[screen] || "Minha conta";
+  const PROVIDER_BREADCRUMB_OVERRIDES: Partial<Record<Screen, string>> = {
+    "for-you": "Recomendações",
+    "startup-detail": "Detalhes da startup",
+    account: "Meu perfil",
+  };
+  const breadcrumbLabel =
+    (isProvider ? PROVIDER_BREADCRUMB_OVERRIDES[screen] : undefined) ||
+    SCREEN_BREADCRUMB_LABELS[screen] ||
+    "Minha conta";
 
   return (
     <div className="startin-app-shell">
@@ -338,6 +381,7 @@ export function AppShell({
         onClose={() => setMenu(false)}
         mobileOpen={menu}
         accountType={accountType}
+        isTracao={isTracao}
         matchesCount={matchesCount}
         savedCount={savedCount}
         onLogout={onLogout}
@@ -479,7 +523,7 @@ export function AppShell({
                   </div>
                 )}
                 <span className="hidden text-xs font-semibold text-[#111827] md:block">
-                  {startupName || (isCompany ? "Empresa Alpha" : "Nexa Health")}
+                  {startupName || (isProvider ? "Meu perfil" : isCompany ? "Minha Empresa" : "Minha Startup")}
                 </span>
                 <ChevronDown
                   size={14}
@@ -506,7 +550,7 @@ export function AppShell({
                         {startupName || (isCompany ? "Minha Empresa" : "Minha Startup")}
                       </p>
                       <p className="truncate text-[11px] text-[#7a8792]">
-                        Fluxo {isCompany ? "Empresa Contratante" : "Startup"}
+                        Fluxo {isProvider ? "Prestador de Serviços" : isCompany ? "Empresa Contratante" : "Startup"}
                       </p>
                     </div>
                   </div>
@@ -524,21 +568,43 @@ export function AppShell({
                       Home
                     </button>
 
-                    {isCompany && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProfileMenuOpen(false);
-                          go("company-profile");
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
-                      >
-                        <Building2 size={15} className="text-[#111827]" />
-                        Minha empresa (Perfil)
-                      </button>
-                    )}
-
-                    {isCompany ? (
+                    {isProvider ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileMenuOpen(false);
+                            go("for-you");
+                          }}
+                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+                        >
+                          <Rocket size={15} className="text-[#111827]" />
+                          Recomendações
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileMenuOpen(false);
+                            go("connections");
+                          }}
+                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+                        >
+                          <Briefcase size={15} className="text-[#111827]" />
+                          Conexões & Solicitações
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileMenuOpen(false);
+                            go("provider-profile");
+                          }}
+                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+                        >
+                          <UserRound size={15} className="text-[#111827]" />
+                          Meu perfil de prestador
+                        </button>
+                      </>
+                    ) : isCompany ? (
                       <>
                         <button
                           type="button"

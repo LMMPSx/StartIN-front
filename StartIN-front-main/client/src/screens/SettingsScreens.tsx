@@ -16,7 +16,7 @@ import {
   UserRound,
   X,
 } from "@/icons";
-import { AiPromptTutorialGuide, BackButton, Field, PageTitle, PrimaryButton } from "@/components/startin/CommonUI";
+import { AiPromptTutorialGuide, BackButton, Field, LocationField, PageTitle, PrimaryButton } from "@/components/startin/CommonUI";
 import {
   api,
   clearSession,
@@ -26,7 +26,15 @@ import {
   type StartupProfileData,
 } from "@/lib/api";
 import type { Screen } from "@/types/startin";
-import { getInitials } from "@/utils/formatters";
+import {
+  formatCityStateOnly,
+  formatCNPJ,
+  formatPhoneBR,
+  getInitials,
+  isValidCNPJ,
+  isValidEmail,
+  isValidPhoneBR,
+} from "@/utils/formatters";
 import {
   calculateTrlFromAnswers,
   MAIN_TECH_AREAS,
@@ -487,16 +495,65 @@ export function SubSettings({
       ? ["Compra", "Editais", "Eventos"]
       : ["POC", "Primeira Compra", "Editais", "Eventos"];
 
-  const handleStageSwitch = (stage: "Validação" | "Tração") => {
+  const persistStageToBackend = async (
+    newStage: "Validação" | "Tração",
+    newTrl?: number,
+    newAttested?: boolean,
+    newAttestationInfo?: string
+  ) => {
+    try {
+      const targetId = profile?.id || startupId || session?.startupProfileId || 1;
+      const finalTrl = newTrl ?? trlScore;
+      const finalAttested = newAttested ?? tractionAttested;
+      const finalAttestationInfo = newAttestationInfo ?? tractionAttestationInfo;
+      const finalOppTypes =
+        newStage === "Tração"
+          ? "Compra, Editais, Eventos"
+          : "POC, Primeira Compra, Editais, Eventos";
+
+      const updatedProfile = await api.updateProfile(targetId, {
+        ...(profile || {}),
+        name: startupName || profile?.name || "Minha Startup",
+        cnpj: accCnpj || profile?.cnpj || "",
+        phone: accPhone || profile?.phone || "",
+        website: startupWebsite || profile?.website || "",
+        location: operationRegion || profile?.location || "",
+        operationRegion: operationRegion || profile?.operationRegion || "",
+        mainArea: effectiveMainArea || profile?.mainArea || "Tecnologia",
+        mainSector: effectiveMainArea || profile?.mainSector || "Tecnologia",
+        problem: startupProblem || profile?.problem || "",
+        currentStage: newStage,
+        trlScore: finalTrl,
+        tractionAttested: finalAttested,
+        tractionAttestationInfo: finalAttestationInfo,
+        opportunityTypes: finalOppTypes,
+        areasOfInterest: selectedAreas.length > 0 ? selectedAreas.join(", ") : (profile?.areasOfInterest || ""),
+        technologies: selectedAreas.length > 0 ? selectedAreas.join(", ") : (profile?.technologies || ""),
+        receiveAiRecommendations: receiveRecs,
+      });
+
+      onProfileUpdated(updatedProfile);
+      api.recalculateMatches(updatedProfile.id || targetId, true).catch(() => {});
+      onNotificationTrigger?.();
+      setAccountSavedMsg(`Estágio alterado para ${newStage} e salvo com sucesso no sistema!`);
+      setTimeout(() => setAccountSavedMsg(""), 4500);
+    } catch (err: any) {
+      console.error("Erro ao persistir novo estágio:", err);
+    }
+  };
+
+  const handleStageSwitch = async (stage: "Validação" | "Tração") => {
     if (stage === "Validação") {
       setCurrentStage("Validação");
       setSelectedOppTypes(["POC", "Primeira Compra", "Editais", "Eventos"]);
       setPrefType("POC, Primeira Compra, Editais, Eventos");
+      await persistStageToBackend("Validação", trlScore, false, "");
     } else {
       if (tractionAttested) {
         setCurrentStage("Tração");
         setSelectedOppTypes(["Compra", "Editais", "Eventos"]);
         setPrefType("Compra, Editais, Eventos");
+        await persistStageToBackend("Tração", Math.max(7, trlScore || 7), true, tractionAttestationInfo);
       } else {
         setShowTrlModal(true);
       }
@@ -665,9 +722,28 @@ export function SubSettings({
     setAccountSavedMsg("");
     setAccountErrorMsg("");
 
+    const digitsOnlyCnpj = (accCnpj || "").replace(/\D/g, "");
+    const isUnchangedExistingCnpj = Boolean(profile?.cnpj && accCnpj.trim() === profile.cnpj.trim());
+    if (!isUnchangedExistingCnpj && (!isValidCNPJ(accCnpj) || digitsOnlyCnpj.length !== 14)) {
+      setAccountErrorMsg(
+        "Informe um CNPJ autêntico e válido com exatos 14 dígitos (00.000.000/0000-00). A plataforma opera exclusivamente com CNPJ."
+      );
+      return;
+    }
+    if (accPhone && !isValidPhoneBR(accPhone)) {
+      setAccountErrorMsg(
+        "Informe um telefone/celular autêntico com DDD válido, ex: (81) 99999-9999."
+      );
+      return;
+    }
+    if (accEmail && !isValidEmail(accEmail)) {
+      setAccountErrorMsg("Informe um endereço de e-mail válido.");
+      return;
+    }
+
     if (currentStage === "Tração" && !tractionAttested) {
       setAccountErrorMsg(
-        "Para salvar o estágio Tração, responda às perguntas TRL da NASA e anexe o Atestado de Capacidade Técnica em PDF."
+        "Para salvar o estágio Tração, responda às perguntas TRL da NASA e anexe o Atestado de Capacidade Técnica."
       );
       return;
     }
@@ -1019,15 +1095,15 @@ export function SubSettings({
               <Field label="Nome da startup" value={startupName} onChange={setStartupName} />
               <Field
                 label="CNPJ"
-                placeholder="AA.AAA.AAA/AAAA-DV"
+                placeholder="00.000.000/0000-00"
                 value={accCnpj}
-                onChange={setAccCnpj}
+                onChange={(v) => setAccCnpj(formatCNPJ(v))}
               />
               <Field
                 label="Telefone / WhatsApp"
-                placeholder="(00) 00000-0000"
+                placeholder="(00) 90000-0000"
                 value={accPhone}
-                onChange={setAccPhone}
+                onChange={(v) => setAccPhone(formatPhoneBR(v))}
               />
               <Field label="E-mail de acesso" value={accEmail} onChange={setAccEmail} />
               <Field label="Nome do responsável" value={accName} onChange={setAccName} />
@@ -1081,8 +1157,8 @@ export function SubSettings({
                 </label>
               </div>
 
-              <Field
-                label="Localização"
+              <LocationField
+                label="Localização (Cidade, UF)"
                 placeholder="Recife, PE"
                 value={operationRegion}
                 onChange={setOperationRegion}
@@ -1315,10 +1391,20 @@ export function SubSettings({
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap items-center gap-4">
               <PrimaryButton onClick={handleSaveAccount}>
                 Salvar dados da conta e da startup <Check size={15} />
               </PrimaryButton>
+              {accountSavedMsg && (
+                <span className="text-xs font-bold text-emerald-700">
+                  ✓ {accountSavedMsg}
+                </span>
+              )}
+              {accountErrorMsg && (
+                <span className="text-xs font-bold text-red-600">
+                  ✕ {accountErrorMsg}
+                </span>
+              )}
             </div>
 
             <div className="mt-9 border-t border-[#edf0f2] pt-7">
@@ -1696,7 +1782,7 @@ export function SubSettings({
                           <input
                             ref={pdfInputRef}
                             type="file"
-                            accept="application/pdf,.pdf"
+                            accept="application/pdf,.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
                             onChange={handleTractionPdfUpload}
                             className="hidden"
                           />
@@ -1707,7 +1793,7 @@ export function SubSettings({
                             className="inline-flex items-center gap-1.5 rounded-lg bg-[#111827] px-4 py-2.5 text-xs font-extrabold text-[#FEC908] transition hover:bg-black disabled:opacity-60"
                           >
                             <Upload size={14} />
-                            {verifyingPdf ? "Atestando PDF com IA..." : "Anexar Atestado PDF"}
+                            {verifyingPdf ? "Atestando documento com IA..." : "Anexar Atestado de Capacidade"}
                           </button>
                         </div>
                       </div>
@@ -1761,12 +1847,13 @@ export function SubSettings({
               {computedTrlScore >= 7 && tractionAttested ? (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
+                    const finalTrl = computedTrlScore >= 7 ? computedTrlScore : 7;
                     setCurrentStage("Tração");
                     setSelectedOppTypes(["Compra", "Editais", "Eventos"]);
                     setPrefType("Compra, Editais, Eventos");
                     setShowTrlModal(false);
-                    setAccountSavedMsg("Estágio Tração confirmado com sucesso! Salve os dados da conta abaixo para persistir.");
+                    await persistStageToBackend("Tração", finalTrl, true, tractionAttestationInfo);
                   }}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#111827] px-5 py-2.5 text-xs font-extrabold text-[#FEC908] hover:bg-black transition shadow-sm"
                 >
@@ -1775,12 +1862,12 @@ export function SubSettings({
               ) : computedTrlScore < 7 && allTrlAnswered ? (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setCurrentStage("Validação");
                     setSelectedOppTypes(["POC", "Primeira Compra", "Editais", "Eventos"]);
                     setPrefType("POC, Primeira Compra, Editais, Eventos");
                     setShowTrlModal(false);
-                    setAccountSavedMsg("Estágio Validação mantido (TRL 1 a 6).");
+                    await persistStageToBackend("Validação", computedTrlScore, false, "");
                   }}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#16734d] px-5 py-2.5 text-xs font-extrabold text-white hover:bg-[#12583a] transition shadow-sm"
                 >

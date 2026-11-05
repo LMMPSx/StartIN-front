@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   ArrowRight,
   Bot,
+  Briefcase,
   Building2,
   Check,
   CheckCircle2,
@@ -29,7 +30,7 @@ export function LandingScreen({
   go: (s: Screen) => void;
   onSelectRole?: (role: AccountType) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"startup" | "company">("startup");
+  const [activeTab, setActiveTab] = useState<"startup" | "company" | "provider">("startup");
 
   const handleStartSignup = (role: AccountType) => {
     onSelectRole?.(role);
@@ -137,6 +138,13 @@ export function LandingScreen({
                 className="flex items-center gap-2.5 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-slate-800 shadow-xs transition hover:bg-slate-50 hover:border-slate-400"
               >
                 <Building2 size={17} /> Sou uma Empresa Contratante
+              </button>
+              <button
+                type="button"
+                onClick={() => handleStartSignup("PROVIDER")}
+                className="flex items-center gap-2.5 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-slate-800 shadow-xs transition hover:bg-slate-50 hover:border-slate-400"
+              >
+                <Briefcase size={17} /> Sou um Prestador de Serviços
               </button>
             </div>
           </div>
@@ -353,8 +361,8 @@ export function LandingScreen({
               Escolha seu perfil abaixo e entenda a jornada de matching inteligente.
             </p>
 
-            {/* Toggle Startup / Empresa */}
-            <div className="mt-8 inline-flex rounded-xl border border-white/15 bg-white/5 p-1.5">
+            {/* Toggle Startup / Empresa / Prestador */}
+            <div className="mt-8 inline-flex flex-wrap justify-center rounded-xl border border-white/15 bg-white/5 p-1.5">
               <button
                 type="button"
                 onClick={() => setActiveTab("startup")}
@@ -377,6 +385,17 @@ export function LandingScreen({
               >
                 <Building2 size={14} /> Para Empresas
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("provider")}
+                className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-xs font-extrabold transition ${
+                  activeTab === "provider"
+                    ? "bg-[#FEC908] text-[#111827] shadow-sm"
+                    : "text-gray-300 hover:text-white"
+                }`}
+              >
+                <Briefcase size={14} /> Para Prestadores
+              </button>
             </div>
           </div>
 
@@ -394,7 +413,7 @@ export function LandingScreen({
                   <div className="text-xs font-black text-[#FEC908]">ETAPA 02</div>
                   <h3 className="mt-3 text-lg font-bold text-white">Maturidade & Escala TRL da NASA</h3>
                   <p className="mt-2 text-xs leading-5 text-gray-300">
-                    A escala TRL (1 a 9) da NASA define o estágio da startup: Validação (níveis 1 a 6) para POCs e editais, ou Tração (níveis 7 a 9) com comprovação técnica em PDF para compras corporativas diretas.
+                    A escala TRL (1 a 9) da NASA define o estágio da startup: Validação (níveis 1 a 6) para POCs e editais, ou Tração (níveis 7 a 9) com comprovação técnica de Atestado de Capacidade para compras corporativas diretas.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
@@ -405,7 +424,7 @@ export function LandingScreen({
                   </p>
                 </div>
               </>
-            ) : (
+            ) : activeTab === "company" ? (
               <>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                   <div className="text-xs font-black text-[#FEC908]">ETAPA 01</div>
@@ -426,6 +445,30 @@ export function LandingScreen({
                   <h3 className="mt-3 text-lg font-bold text-white">Lançamento de POCs e Matchmaking</h3>
                   <p className="mt-2 text-xs leading-5 text-gray-300">
                     Defina modalidades (POC, Primeira Compra ou Compra), visualize o ranking de startups aderentes com a balança auditada e inicie contato direto.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <div className="text-xs font-black text-[#FEC908]">ETAPA 01</div>
+                  <h3 className="mt-3 text-lg font-bold text-white">Perfil, Especialidade & Portfólio com IA</h3>
+                  <p className="mt-2 text-xs leading-5 text-gray-300">
+                    Cadastre sua categoria de atuação (Design, Desenvolvimento, Marketing, Jurídico ou Financeiro), estruture sua bio em 1ª pessoa com IA e destaque suas ferramentas e cases.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <div className="text-xs font-black text-[#FEC908]">ETAPA 02</div>
+                  <h3 className="mt-3 text-lg font-bold text-white">Matchmaking com Startups em Tração</h3>
+                  <p className="mt-2 text-xs leading-5 text-gray-300">
+                    Nossa IA cruza suas competências com startups validadas no estágio de Tração e suas demandas técnicas de trabalho abertas na plataforma.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <div className="text-xs font-black text-[#FEC908]">ETAPA 03</div>
+                  <h3 className="mt-3 text-lg font-bold text-white">Conexão Direta, Propostas & Contratos</h3>
+                  <p className="mt-2 text-xs leading-5 text-gray-300">
+                    Salve oportunidades de demandas, use o Assistente IA para elaborar propostas técnicas sob medida e envie solicitações de parceria diretamente às startups.
                   </p>
                 </div>
               </>
@@ -568,6 +611,13 @@ export function LandingScreen({
             >
               Começar como Empresa <Building2 size={16} />
             </button>
+            <button
+              type="button"
+              onClick={() => handleStartSignup("PROVIDER")}
+              className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-7 py-3.5 text-sm font-bold text-white transition hover:bg-white/15"
+            >
+              Começar como Prestador <Briefcase size={16} />
+            </button>
           </div>
         </div>
       </section>
@@ -583,7 +633,7 @@ export function LandingScreen({
               © 2026 StartIn. Todos os direitos reservados.
             </span>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-6">
             <button onClick={() => go("login")} className="hover:text-white">
               Entrar
             </button>
@@ -592,6 +642,9 @@ export function LandingScreen({
             </button>
             <button onClick={() => handleStartSignup("COMPANY")} className="hover:text-white">
               Cadastro Empresa
+            </button>
+            <button onClick={() => handleStartSignup("PROVIDER")} className="hover:text-white">
+              Cadastro Prestador
             </button>
             <span className="text-gray-500">Recife · Brasil</span>
           </div>

@@ -11,7 +11,7 @@ import {
   Sparkles,
   Upload,
 } from "@/icons";
-import { AiPromptTutorialGuide, Field, PrimaryButton } from "@/components/startin/CommonUI";
+import { AiPromptTutorialGuide, Field, LocationField, PrimaryButton } from "@/components/startin/CommonUI";
 import {
   api,
   getSession,
@@ -20,6 +20,7 @@ import {
   type StartupProfileData,
 } from "@/lib/api";
 import type { AccountType, Screen } from "@/types/startin";
+import { formatCityStateOnly } from "@/utils/formatters";
 
 export const MAIN_TECH_AREAS = [
   "Inteligência Artificial & Dados",
@@ -807,7 +808,7 @@ export function Onboarding({
         });
       }
       localStorage.setItem("startin-auth", "1");
-      await api.recalculateMatches(updated.id || targetId, false).catch(() => {});
+      await api.recalculateMatches(updated.id || targetId, true).catch(() => {});
     } catch {
       localStorage.setItem("startin-auth", "1");
       // ignora erro de rede local se ocorrer
@@ -1054,9 +1055,9 @@ export function Onboarding({
           </label>
         </div>
 
-        <Field
-          label="Localização (Sede / Cidade, UF)"
-          placeholder="Recife, PE · Brasil"
+        <LocationField
+          label="Localização (Cidade, UF)"
+          placeholder="Recife, PE"
           value={companyForm.location || ""}
           onChange={setCompanyField("location")}
         />
@@ -1467,8 +1468,8 @@ export function Onboarding({
         </label>
       </div>
 
-      <Field
-        label="Localização"
+      <LocationField
+        label="Localização (Cidade, UF)"
         placeholder="Recife, PE"
         value={form.location}
         onChange={setField("location")}
@@ -1752,7 +1753,7 @@ export function Onboarding({
                     <input
                       ref={pdfInputRef}
                       type="file"
-                      accept="application/pdf,.pdf"
+                      accept="application/pdf,.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
                       onChange={handleTractionPdfUpload}
                       className="hidden"
                     />
@@ -1764,10 +1765,10 @@ export function Onboarding({
                     >
                       <Upload size={14} />
                       {verifyingPdf
-                        ? "Lendo e atestando PDF com IA..."
+                        ? "Lendo e atestando documento com IA..."
                         : form.tractionAttested
-                        ? "Substituir PDF atestado"
-                        : "Selecionar PDF do Atestado"}
+                        ? "Substituir Atestado"
+                        : "Selecionar Atestado de Capacidade"}
                     </button>
                   </div>
                 </div>

@@ -3,7 +3,7 @@ import { Camera, Check, Plus, X } from "@/icons";
 import { BackButton, PageTitle, PrimaryButton } from "@/components/startin/CommonUI";
 import { api, getSession, saveSession, type StartupProfileData } from "@/lib/api";
 import type { Screen } from "@/types/startin";
-import { getInitials } from "@/utils/formatters";
+import { formatCityStateOnly, getInitials } from "@/utils/formatters";
 
 const DEFAULT_INTEREST_AREAS = [
   "IA",
@@ -158,8 +158,9 @@ export function Startup({
 
   const displayName = profile?.name || "Nexa Health";
   const displaySubtitle =
-    [profile?.mainArea, profile?.businessModel, profile?.location].filter(Boolean).join(" · ") ||
-    "Healthtech · SaaS · B2B";
+    [profile?.mainArea, profile?.businessModel, formatCityStateOnly(profile?.location)]
+      .filter(Boolean)
+      .join(" · ") || "Healthtech · SaaS · B2B";
 
   return (
     <>

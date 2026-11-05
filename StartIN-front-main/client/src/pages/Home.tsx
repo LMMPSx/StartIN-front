@@ -4,11 +4,13 @@ import {
   api,
   clearSession,
   getSession,
+  saveSession,
   type CompanyMatchItem,
   type CompanyProfileData,
   type MatchItem,
   type NotificationItem,
   type OpportunityItem,
+  type ServiceProviderData,
   type StartupMatchItem,
   type StartupProfileData,
 } from "@/lib/api";
@@ -39,13 +41,31 @@ import {
   SubSettings,
   Verify,
 } from "@/screens";
+import {
+  ConnectionSentScreen,
+  ConnectionsScreen,
+  CreateServiceDemandScreen,
+  ExploreProvidersScreen,
+  ExploreStartupsScreen,
+  ProviderDashboardScreen,
+  ProviderDetailScreen,
+  ProviderOnboardingScreen,
+  ProviderProfileScreen,
+  ProviderStartupDetailScreen,
+  RequestConnectionScreen,
+  StartupServiceDemandsScreen,
+} from "@/screens/ProviderScreens";
 import type { AccountType, Screen } from "@/types/startin";
 import { computeAuditedClientMatchScore } from "@/utils/formatters";
 
 export default function Home() {
   const session = getSession();
   const initialAccountType: AccountType =
-    session?.accountType === "COMPANY" ? "COMPANY" : "STARTUP";
+    session?.accountType === "PROVIDER"
+      ? "PROVIDER"
+      : session?.accountType === "COMPANY"
+      ? "COMPANY"
+      : "STARTUP";
 
   const [accountType, setAccountType] = useState<AccountType>(initialAccountType);
   const [signupAccountType, setSignupAccountType] = useState<AccountType>("STARTUP");
@@ -122,13 +142,22 @@ export default function Home() {
       return null;
     }
   });
+  const [selectedProvider, setSelectedProvider] = useState<ServiceProviderData | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("startin_selected_provider");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [profile, setProfile] = useState<StartupProfileData | null>(null);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfileData | null>(null);
+  const [providerProfile, setProviderProfile] = useState<ServiceProviderData | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [matchesCount, setMatchesCount] = useState<number>(2);
   const [savedCount, setSavedCount] = useState<number>(() =>
-    session?.accountType === "COMPANY"
+    session?.accountType === "COMPANY" || session?.accountType === "PROVIDER"
       ? 0
       : getLocalSavedOpportunities(session?.startupProfileId).length
   );
@@ -137,6 +166,7 @@ export default function Home() {
 
   const activeStartupId = profile?.id || session?.startupProfileId;
   const activeCompanyId = companyProfile?.id || session?.companyId;
+  const activeProviderId = providerProfile?.id || session?.providerId;
 
   const refreshNotifications = useCallback(
     (overrideIds?: { startupId?: number; companyId?: number; role?: AccountType }) => {
@@ -147,7 +177,11 @@ export default function Home() {
       }
       const role: AccountType =
         overrideIds?.role ||
-        (currentSession?.accountType === "COMPANY" ? "COMPANY" : "STARTUP");
+        (currentSession?.accountType === "PROVIDER"
+          ? "PROVIDER"
+          : currentSession?.accountType === "COMPANY"
+          ? "COMPANY"
+          : "STARTUP");
       const targetStartupId =
         overrideIds?.startupId ?? profile?.id ?? currentSession?.startupProfileId;
       const targetCompanyId =
@@ -173,7 +207,7 @@ export default function Home() {
 
   const refreshSavedCount = (matchesFromApi?: MatchItem[], targetStartupId?: number) => {
     const currentSession = getSession();
-    if ((currentSession?.accountType || accountType) === "COMPANY") {
+    if ((currentSession?.accountType || accountType) !== "STARTUP") {
       setSavedCount(0);
       return;
     }
@@ -197,6 +231,16 @@ export default function Home() {
     } catch {}
     setSelectedScreen(screen);
   }, [screen]);
+
+  useEffect(() => {
+    try {
+      if (selectedProvider) {
+        sessionStorage.setItem("startin_selected_provider", JSON.stringify(selectedProvider));
+      } else {
+        sessionStorage.removeItem("startin_selected_provider");
+      }
+    } catch {}
+  }, [selectedProvider]);
 
   useEffect(() => {
     try {
@@ -251,19 +295,53 @@ export default function Home() {
   useEffect(() => {
     const currentSession = getSession();
     const currentType: AccountType =
-      currentSession?.accountType === "COMPANY" ? "COMPANY" : "STARTUP";
+      currentSession?.accountType === "PROVIDER"
+        ? "PROVIDER"
+        : currentSession?.accountType === "COMPANY"
+        ? "COMPANY"
+        : "STARTUP";
     setAccountType(currentType);
 
     if (!currentSession && !localStorage.getItem("startin-auth")) {
       setProfile(null);
       setCompanyProfile(null);
+      setProviderProfile(null);
       setNotifications([]);
       setSavedCount(0);
       return;
     }
 
-    if (currentType === "STARTUP") {
+    if (currentType === "PROVIDER") {
+      setProfile(null);
       setCompanyProfile(null);
+      setSavedCount(0);
+      const providerId = currentSession?.providerId;
+      const userId = currentSession?.userId;
+
+      if (providerId) {
+        api
+          .getProvider(providerId)
+          .then((pr) => {
+            if (pr) setProviderProfile(pr);
+          })
+          .catch(() => {});
+      } else if (userId) {
+        api
+          .getProviderByUser(userId)
+          .then((pr) => {
+            if (pr) {
+              setProviderProfile(pr);
+              if (currentSession && !currentSession.providerId && pr.id) {
+                saveSession({ ...currentSession, providerId: pr.id });
+              }
+            }
+          })
+          .catch(() => {});
+      }
+      refreshNotifications({ role: "PROVIDER" });
+    } else if (currentType === "STARTUP") {
+      setCompanyProfile(null);
+      setProviderProfile(null);
       const startupId = currentSession?.startupProfileId;
       const userId = currentSession?.userId;
 
@@ -314,6 +392,7 @@ export default function Home() {
         });
     } else {
       setProfile(null);
+      setProviderProfile(null);
       setSavedCount(0);
       const companyId = currentSession?.companyId;
       const userId = currentSession?.userId;
@@ -357,11 +436,13 @@ export default function Home() {
       sessionStorage.removeItem("startin_assistant_opportunity");
       sessionStorage.removeItem("startin_selected_startup_match");
       sessionStorage.removeItem("startin_selected_company_match");
+      sessionStorage.removeItem("startin_selected_provider");
       sessionStorage.removeItem("startin_selected_match");
     } catch {}
     clearSession();
     setProfile(null);
     setCompanyProfile(null);
+    setProviderProfile(null);
     setNotifications([]);
     setSavedCount(0);
     setSelectedMatch(null);
@@ -370,11 +451,19 @@ export default function Home() {
     setAssistantOpportunity(null);
     setSelectedStartupMatch(null);
     setSelectedCompanyMatch(null);
+    setSelectedProvider(null);
     setAuthVersion((v) => v + 1);
     go("landing");
   };
 
-  const go = (next: Screen) => {
+  const go = (rawNext: Screen) => {
+    // Rotas legadas do prestador consolidadas: Painel -> Home, Explorar -> Recomendações
+    const next: Screen =
+      rawNext === "provider-dashboard"
+        ? "dashboard"
+        : rawNext === "explore-startups"
+        ? "for-you"
+        : rawNext;
     try {
       sessionStorage.setItem("startin_active_screen", next);
     } catch {}
@@ -526,9 +615,27 @@ export default function Home() {
     }
 
     const currentSession = getSession();
-    const isComp =
-      (currentSession?.accountType || accountType) === "COMPANY";
+    const currentRole = currentSession?.accountType || accountType;
+    const isComp = currentRole === "COMPANY";
+    const isProv = currentRole === "PROVIDER";
     const dest = n.targetScreen || "";
+
+    if (isProv) {
+      if (dest === "connections" || (n.type || "").toLowerCase().includes("conex")) {
+        go("connections");
+        return;
+      }
+      if (dest === "explore-startups") {
+        go("explore-startups");
+        return;
+      }
+      if (dest === "provider-profile") {
+        go("provider-profile");
+        return;
+      }
+      go("connections");
+      return;
+    }
 
     if (isComp) {
       if (dest === "startup-detail") {
@@ -616,7 +723,11 @@ export default function Home() {
     setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
     const currentSession = getSession();
     const role: AccountType =
-      currentSession?.accountType === "COMPANY" ? "COMPANY" : "STARTUP";
+      currentSession?.accountType === "PROVIDER"
+        ? "PROVIDER"
+        : currentSession?.accountType === "COMPANY"
+        ? "COMPANY"
+        : "STARTUP";
     api
       .markAllNotificationsRead({
         role,
@@ -639,7 +750,7 @@ export default function Home() {
     );
   }
 
-  if (["login", "signup", "recovery", "reset", "verify", "onboarding"].includes(screen)) {
+  if (["login", "signup", "recovery", "reset", "verify", "onboarding", "provider-onboarding"].includes(screen)) {
     if (screen === "login")
       return <Login go={go} onAuthSuccess={() => setAuthVersion((v) => v + 1)} />;
     if (screen === "signup")
@@ -655,6 +766,13 @@ export default function Home() {
     if (screen === "reset")
       return <Reset go={go} recoveryEmail={recoveryEmail} />;
     if (screen === "verify") return <Verify go={go} />;
+    if (screen === "provider-onboarding")
+      return (
+        <ProviderOnboardingScreen
+          go={go}
+          onComplete={() => setAuthVersion((v) => v + 1)}
+        />
+      );
     return (
       <Onboarding
         go={go}
@@ -666,19 +784,191 @@ export default function Home() {
     );
   }
 
+  const isProvider = accountType === "PROVIDER";
   const isCompany = accountType === "COMPANY";
+  const isTracao =
+    profile?.currentStage === "Tração"
+      ? true
+      : profile?.currentStage === "Validação"
+      ? false
+      : Boolean(profile?.tractionAttested) || Boolean(profile?.trlScore && profile.trlScore >= 7);
 
-  const displayName = isCompany
-    ? companyProfile?.name || session?.name || "Empresa Alpha"
-    : profile?.name || session?.name || "Nexa Health";
-  const displayAvatarUrl = isCompany
+  const displayName = isProvider
+    ? providerProfile?.name || session?.name || "Prestador de Serviços"
+    : isCompany
+    ? companyProfile?.name || session?.name || "Minha Empresa"
+    : profile?.name || session?.name || "Minha Startup";
+  const displayAvatarUrl = isProvider
+    ? providerProfile?.photoUrl || session?.avatarUrl
+    : isCompany
     ? companyProfile?.avatarUrl || session?.avatarUrl
     : profile?.avatarUrl || session?.avatarUrl;
 
   let page: React.ReactNode = null;
 
-  // Telas Exclusivas do Fluxo Empresa (sem Assistente IA!)
-  if (isCompany) {
+  // Telas Comuns de Conexões e Prestadores (Restritas a Prestadores ou Startups em Estágio de TRAÇÃO)
+  const isProviderRelatedScreen = [
+    "explore-providers",
+    "provider-detail",
+    "request-connection",
+    "connection-sent",
+    "connections",
+    "my-service-demands",
+    "create-service-demand",
+    "edit-service-demand",
+  ].includes(screen);
+
+  if (!isProvider && !isCompany && !isTracao && isProviderRelatedScreen) {
+    page = (
+      <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-[#e2e7eb] bg-white p-8 text-center shadow-xs">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#111827] text-[#FEC908]">
+          <Rocket size={22} />
+        </div>
+        <h2 className="text-xl font-extrabold text-[#111827]">
+          Exclusivo para Startups em Estágio de Tração
+        </h2>
+        <p className="mt-2 text-xs leading-5 text-[#64748b]">
+          A exploração de prestadores de serviços, abertura de demandas técnicas e conexões com prestadores estão disponíveis exclusivamente para startups validadas no estágio de <strong>Tração (TRL 7 a 9 com Atestado de Capacidade Técnica)</strong>.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => go("account")}
+            className="rounded-xl bg-[#111827] px-5 py-2.5 text-xs font-extrabold text-[#FEC908] transition hover:bg-black"
+          >
+            Validar Estágio de Tração no Meu Perfil
+          </button>
+          <button
+            type="button"
+            onClick={() => go("dashboard")}
+            className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-xs font-bold text-gray-700 transition hover:bg-gray-50"
+          >
+            Voltar para Home
+          </button>
+        </div>
+      </div>
+    );
+  } else if (screen === "explore-providers") {
+    page = (
+      <ExploreProvidersScreen
+        go={go}
+        onSelectProvider={setSelectedProvider}
+      />
+    );
+  } else if (screen === "provider-detail") {
+    page = (
+      <ProviderDetailScreen
+        go={go}
+        provider={selectedProvider}
+        onRequestConnection={() => go("request-connection")}
+      />
+    );
+  } else if (screen === "request-connection") {
+    page = (
+      <RequestConnectionScreen
+        go={go}
+        provider={selectedProvider}
+        startup={isProvider ? (selectedStartupMatch as any) : profile}
+      />
+    );
+  } else if (screen === "connection-sent") {
+    page = <ConnectionSentScreen go={go} />;
+  } else if (screen === "connections") {
+    page = <ConnectionsScreen go={go} accountType={accountType} />;
+  } else if (screen === "explore-startups" || screen === "saved-startups") {
+    page = (
+      <ExploreStartupsScreen
+        go={go}
+        onlySaved={screen === "saved-startups"}
+        onSelectStartup={(st) => {
+          setSelectedStartupMatch(st);
+        }}
+      />
+    );
+  } else if (screen === "provider-profile" || (isProvider && screen === "account")) {
+    page = <ProviderProfileScreen go={go} onProviderUpdated={setProviderProfile} />;
+  } else if (screen === "my-service-demands") {
+    page = (
+      <StartupServiceDemandsScreen
+        go={go}
+        onEditDemand={(d) => {
+          setEditingOpportunity(d);
+          go("edit-service-demand");
+        }}
+      />
+    );
+  } else if (screen === "create-service-demand") {
+    page = <CreateServiceDemandScreen go={go} existingDemand={null} />;
+  } else if (screen === "edit-service-demand") {
+    page = <CreateServiceDemandScreen go={go} existingDemand={editingOpportunity} />;
+  } else if (isProvider) {
+    // Telas Exclusivas do Prestador de Serviços
+    if (screen === "dashboard" || screen === "provider-dashboard") {
+      page = (
+        <ProviderDashboardScreen
+          go={go}
+          onSelectStartup={(st) => {
+            setSelectedStartupMatch(st);
+          }}
+        />
+      );
+    } else if (screen === "startup-detail") {
+      page = <ProviderStartupDetailScreen go={go} startup={selectedStartupMatch} />;
+    } else if (screen === "for-you") {
+      page = (
+        <ExploreStartupsScreen
+          go={go}
+          onSelectStartup={(st) => {
+            setSelectedStartupMatch(st);
+          }}
+        />
+      );
+    } else if (screen === "assistant") {
+      page = (
+        <Assistant
+          go={go}
+          profile={null}
+          accountType="PROVIDER"
+          providerProfile={providerProfile}
+          selectedOpportunity={assistantOpportunity}
+          onSelectOpportunity={setAssistantOpportunity}
+        />
+      );
+    } else if (screen === "settings") {
+      page = (
+        <SettingsPage
+          go={go}
+          startupId={activeStartupId}
+          profile={profile}
+          onProfileUpdated={setProfile}
+        />
+      );
+    } else if (["privacy", "notifications"].includes(screen)) {
+      page = (
+        <SubSettings
+          screen={screen}
+          go={go}
+          startupId={activeStartupId}
+          companyId={activeCompanyId}
+          profile={profile}
+          onProfileUpdated={setProfile}
+          notifications={notifications}
+          onNotificationClick={handleNotificationClick}
+          onMarkAllRead={handleMarkAllNotificationsRead}
+          onNotificationTrigger={() => refreshNotifications()}
+        />
+      );
+    } else {
+      page = (
+        <ProviderDashboardScreen
+          go={go}
+          onSelectStartup={(st) => {
+            setSelectedStartupMatch(st);
+          }}
+        />
+      );
+    }
+  } else if (isCompany) {
     if (screen === "dashboard") {
       page = (
         <CompanyDashboard
@@ -931,6 +1221,7 @@ export default function Home() {
       screen={selectedScreen}
       go={go}
       accountType={accountType}
+      isTracao={Boolean(isTracao)}
       startupName={displayName}
       avatarUrl={displayAvatarUrl}
       matchesCount={matchesCount}

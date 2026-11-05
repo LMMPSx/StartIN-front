@@ -1,9 +1,16 @@
 import React, { useState } from "react";
-import { ArrowLeft, ArrowRight, Building2, Check, Mail, Rocket } from "@/icons";
+import { ArrowLeft, ArrowRight, Briefcase, Building2, Check, Mail, Rocket } from "@/icons";
 import { Field, PrimaryButton } from "@/components/startin/CommonUI";
 import { AuthShell } from "@/components/startin/ShellLayout";
 import { api, getSession, saveSession } from "@/lib/api";
 import type { AccountType, Screen } from "@/types/startin";
+import {
+  formatCNPJ,
+  formatPhoneBR,
+  isValidCNPJ,
+  isValidEmail,
+  isValidPhoneBR,
+} from "@/utils/formatters";
 
 export function Login({
   go,
@@ -28,12 +35,17 @@ export function Login({
     try {
       const res = await api.login({ email, password });
       const accountType: AccountType =
-        res.accountType === "COMPANY" ? "COMPANY" : "STARTUP";
+        res.accountType === "PROVIDER"
+          ? "PROVIDER"
+          : res.accountType === "COMPANY"
+          ? "COMPANY"
+          : "STARTUP";
       saveSession({
         token: res.token,
         userId: res.userId,
         startupProfileId: res.startupProfileId,
         companyId: res.companyId,
+        providerId: res.providerId,
         accountType,
         email: res.email,
         name: res.name,
@@ -43,7 +55,11 @@ export function Login({
       });
       localStorage.setItem("startin-auth", "1");
       onAuthSuccess();
-      go("dashboard");
+      if (accountType === "PROVIDER") {
+        go("provider-dashboard");
+      } else {
+        go("dashboard");
+      }
     } catch (err: any) {
       setError(err.message || "Não foi possível entrar. Verifique suas credenciais.");
     } finally {
@@ -131,17 +147,44 @@ export function Signup({
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const set = (key: keyof typeof form) => (value: string) =>
+  const set = (key: keyof typeof form) => (value: string) => {
+    if (key === "cnpj") {
+      setForm((f) => ({ ...f, cnpj: formatCNPJ(value) }));
+      return;
+    }
+    if (key === "phone") {
+      setForm((f) => ({ ...f, phone: formatPhoneBR(value) }));
+      return;
+    }
     setForm((f) => ({ ...f, [key]: value }));
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!form.email.trim() || !form.password.trim()) {
-      setError("Informe seu e-mail e crie uma senha.");
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      setError("Informe o nome ou razão social.");
       return;
     }
-    if (form.confirm && form.password !== form.confirm) {
+    if (!isValidCNPJ(form.cnpj)) {
+      setError(
+        "Informe um CNPJ autêntico e válido com exatos 14 dígitos (00.000.000/0000-00). A plataforma opera exclusivamente com CNPJ."
+      );
+      return;
+    }
+    if (!isValidPhoneBR(form.phone)) {
+      setError("Informe um telefone/celular autêntico com DDD válido, ex: (81) 99999-9999.");
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      setError("Informe um endereço de e-mail válido.");
+      return;
+    }
+    if (!form.password.trim() || form.password.trim().length < 6) {
+      setError("Crie uma senha com pelo menos 6 caracteres.");
+      return;
+    }
+    if (form.password !== form.confirm) {
       setError("As senhas não coincidem.");
       return;
     }
@@ -152,15 +195,24 @@ export function Signup({
         accountType,
         name:
           form.name.trim() ||
-          (accountType === "COMPANY" ? "Nova Empresa" : "Nova Startup"),
+          (accountType === "PROVIDER"
+            ? "Novo Prestador"
+            : accountType === "COMPANY"
+            ? "Nova Empresa"
+            : "Nova Startup"),
       });
       const resolvedType: AccountType =
-        res.accountType === "COMPANY" ? "COMPANY" : accountType;
+        res.accountType === "PROVIDER"
+          ? "PROVIDER"
+          : res.accountType === "COMPANY"
+          ? "COMPANY"
+          : accountType;
       saveSession({
         token: res.token,
         userId: res.userId,
         startupProfileId: res.startupProfileId,
         companyId: res.companyId,
+        providerId: res.providerId,
         accountType: resolvedType,
         email: res.email,
         name: res.name || form.name,
@@ -183,12 +235,18 @@ export function Signup({
         <>
           Crie sua conta e comece a encontrar{" "}
           <span className="text-[#FEC908]">
-            {accountType === "COMPANY" ? "startups ideais." : "oportunidades."}
+            {accountType === "PROVIDER"
+              ? "startups e demandas."
+              : accountType === "COMPANY"
+              ? "startups ideais."
+              : "oportunidades."}
           </span>
         </>
       }
       sideText={
-        accountType === "COMPANY"
+        accountType === "PROVIDER"
+          ? "Cadastre-se como prestador de serviços ou software house para se conectar a startups e demandas de tecnologia."
+          : accountType === "COMPANY"
           ? "Cadastre sua empresa para lançar desafios de POC, Compra ou POC + Compra e encontrar startups aderentes com IA."
           : "Cadastre-se para conectar sua startup a editais, eventos, empresas, POCs e clientes personalizados com IA."
       }
@@ -217,16 +275,16 @@ export function Signup({
           Selecione seu perfil abaixo e preencha seus dados para começar.
         </p>
 
-        {/* Seletor de Fluxo na 1ª Etapa do Cadastro: Startup vs Empresa */}
+        {/* Seletor de Fluxo na 1ª Etapa do Cadastro: Startup vs Empresa vs Prestador */}
         <div className="mt-5">
           <span className="mb-2 block text-xs font-bold text-[#111827]">
             Qual é o seu perfil na StartIn?
           </span>
-          <div className="grid grid-cols-2 gap-2.5 rounded-xl border border-gray-200 bg-gray-50 p-1.5">
+          <div className="grid grid-cols-3 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-1.5">
             <button
               type="button"
               onClick={() => setAccountType("STARTUP")}
-              className={`flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-xs font-extrabold transition ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 px-2 text-xs font-extrabold transition ${
                 accountType === "STARTUP"
                   ? "bg-[#111827] text-[#FEC908] shadow-sm"
                   : "text-gray-600 hover:bg-white/70"
@@ -240,7 +298,7 @@ export function Signup({
             <button
               type="button"
               onClick={() => setAccountType("COMPANY")}
-              className={`flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-xs font-extrabold transition ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 px-2 text-xs font-extrabold transition ${
                 accountType === "COMPANY"
                   ? "bg-[#111827] text-[#FEC908] shadow-sm"
                   : "text-gray-600 hover:bg-white/70"
@@ -249,9 +307,23 @@ export function Signup({
               <Building2 size={15} />
               Empresa
             </button>
+            <button
+              type="button"
+              onClick={() => setAccountType("PROVIDER")}
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 px-2 text-xs font-extrabold transition ${
+                accountType === "PROVIDER"
+                  ? "bg-[#111827] text-[#FEC908] shadow-sm"
+                  : "text-gray-600 hover:bg-white/70"
+              }`}
+            >
+              <Briefcase size={14} />
+              Prestador
+            </button>
           </div>
           <p className="mt-1.5 text-[11px] text-[#7a8793]">
-            {accountType === "STARTUP"
+            {accountType === "PROVIDER"
+              ? "Fluxo Prestador: cadastre serviços, mostre portfólio e conecte-se a demandas de startups."
+              : accountType === "STARTUP"
               ? "Fluxo Startup: acesso a editais, matches, busca de empresas e recomendações da IA."
               : "Fluxo Empresa: lançamento de POCs/Compras e busca de startups com match da IA."}
           </p>
@@ -264,14 +336,26 @@ export function Signup({
         )}
         <form onSubmit={handleSignup} className="mt-5 space-y-4">
           <Field
-            label={accountType === "COMPANY" ? "Nome da empresa" : "Nome da startup"}
-            placeholder={accountType === "COMPANY" ? "Ex: Empresa Alpha S.A." : "Ex: Nexa Health"}
+            label={
+              accountType === "PROVIDER"
+                ? "Nome do prestador ou empresa de serviços"
+                : accountType === "COMPANY"
+                ? "Nome da empresa"
+                : "Nome da startup"
+            }
+            placeholder={
+              accountType === "PROVIDER"
+                ? "Ex: Ana Martins ou Studio Alpha"
+                : accountType === "COMPANY"
+                ? "Ex: Empresa Alpha S.A."
+                : "Ex: Nexa Health"
+            }
             value={form.name}
             onChange={set("name")}
           />
           <Field
             label="CNPJ"
-            placeholder="AA.AAA.AAA/AAAA-DV"
+            placeholder="00.000.000/0000-00"
             value={form.cnpj}
             onChange={set("cnpj")}
           />
@@ -307,7 +391,12 @@ export function Signup({
             <span className="font-semibold text-[#111827]">Política de Privacidade</span>.
           </p>
           <PrimaryButton type="submit" full disabled={loading}>
-            Criar conta como {accountType === "COMPANY" ? "Empresa" : "Startup"}{" "}
+            Criar conta como{" "}
+            {accountType === "PROVIDER"
+              ? "Prestador de Serviço"
+              : accountType === "COMPANY"
+              ? "Empresa"
+              : "Startup"}{" "}
             <ArrowRight size={16} />
           </PrimaryButton>
         </form>
@@ -441,6 +530,7 @@ export function Reset({
 export function Verify({ go }: { go: (s: Screen) => void }) {
   const session = getSession();
   const isCompany = session?.accountType === "COMPANY";
+  const isProvider = session?.accountType === "PROVIDER";
   return (
     <AuthShell
       sideTitle={
@@ -449,7 +539,11 @@ export function Verify({ go }: { go: (s: Screen) => void }) {
         </>
       }
       sideText={`Enviamos um link de confirmação para validar sua conta antes de configurar ${
-        isCompany ? "sua empresa" : "sua startup"
+        isProvider
+          ? "seu perfil de prestador de serviços"
+          : isCompany
+          ? "sua empresa"
+          : "sua startup"
       }.`}
     >
       <button
@@ -469,7 +563,16 @@ export function Verify({ go }: { go: (s: Screen) => void }) {
         Enviamos uma mensagem para <strong>{session?.email || "seu@email.com"}</strong>.
       </p>
       <div className="mt-6">
-        <PrimaryButton full onClick={() => go("onboarding")}>
+        <PrimaryButton
+          full
+          onClick={() => {
+            if (isProvider) {
+              go("provider-onboarding");
+            } else {
+              go("onboarding");
+            }
+          }}
+        >
           Abrir e-mail <ArrowRight size={16} />
         </PrimaryButton>
       </div>

@@ -10,7 +10,8 @@ export interface UserSession {
   userId: number;
   startupProfileId?: number;
   companyId?: number;
-  accountType?: "STARTUP" | "COMPANY";
+  providerId?: number;
+  accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
   email: string;
   name: string;
   cnpj?: string;
@@ -60,6 +61,112 @@ export interface OpportunityItem {
   url?: string;
   companyId?: number;
   companyName?: string;
+  startupId?: number;
+  startupName?: string;
+  targetCategory?: string;
+}
+
+export interface ServiceProviderData {
+  id?: number;
+  userId?: number;
+  photoUrl?: string;
+  avatarUrl?: string;
+  email?: string;
+  phone?: string;
+  name: string;
+  providerType: "PROFISSIONAL" | "EMPRESA" | string;
+  category: string;
+  description: string;
+  location: string;
+  portfolioUrl?: string;
+  linkedinUrl?: string;
+  availability?: string;
+  mainService: string;
+  serviceExperience?: string;
+  toolsAndSkills?: string;
+  complementaryCategory?: string;
+  targetSegment?: string;
+  experienceYears?: number | string;
+  projectName?: string;
+  projectLink?: string;
+  projectDescription?: string;
+  projectYear?: string;
+  projectRepoUrl?: string;
+  projectTools?: string;
+  projectType?: string;
+  projectCoverUrl?: string;
+  interestSectors?: string;
+  connectionPreference?: string;
+  opportunitiesSought?: string;
+  interestRegion?: string;
+  targetStartupSize?: string;
+  communicationLanguage?: string;
+  tags?: string;
+  savedStartupIds?: string;
+  matchScore?: number;
+  justification?: string;
+  matchReasons?: Record<string, string>;
+  activeConnectionsCount?: number;
+}
+
+export interface ServiceConnectionItem {
+  id: number;
+  startupId: number;
+  startupName: string;
+  startupSegment?: string;
+  startupStage?: string;
+  startupMainArea?: string;
+  startupDescription?: string;
+  startupAvatarUrl?: string;
+  startupEmail?: string;
+  startupPhone?: string;
+  startupWebsite?: string;
+  startupLocation?: string;
+  providerId: number;
+  providerName: string;
+  providerType?: string;
+  providerCategory?: string;
+  providerMainService?: string;
+  providerAvatarUrl?: string;
+  providerEmail?: string;
+  providerPhone?: string;
+  providerLinkedinUrl?: string;
+  providerPortfolioUrl?: string;
+  providerLocation?: string;
+  senderType: "STARTUP" | "PROVIDER" | string;
+  message: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | string;
+  matchScore: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateServiceConnectionPayload {
+  startupId: number;
+  providerId: number;
+  senderType: "STARTUP" | "PROVIDER" | string;
+  message: string;
+  matchScore?: number;
+}
+
+export interface ProviderDashboardSummary {
+  providerId?: number;
+  providerName: string;
+  providerCategory?: string;
+  greeting: string;
+  savedStartupsCount: number;
+  suggestedStartupsCount: number;
+  receivedRequestsCount: number;
+  activeConnectionsCount: number;
+  recommendedStartups: Array<{
+    id: number;
+    name: string;
+    area: string;
+    matchScore: number;
+    location: string;
+    description: string;
+  }>;
+  recentActivities: Array<{ text: string; time: string }>;
 }
 
 export interface CompanyProfileData {
@@ -316,7 +423,8 @@ export const api = {
       avatarUrl?: string;
       startupProfileId?: number;
       companyId?: number;
-      accountType?: "STARTUP" | "COMPANY";
+      providerId?: number;
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
       message?: string;
     }>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
 
@@ -327,7 +435,7 @@ export const api = {
     confirm?: string;
     name?: string;
     phone?: string;
-    accountType?: "STARTUP" | "COMPANY";
+    accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
   }) =>
     request<{
       success: boolean;
@@ -340,7 +448,8 @@ export const api = {
       avatarUrl?: string;
       startupProfileId?: number;
       companyId?: number;
-      accountType?: "STARTUP" | "COMPANY";
+      providerId?: number;
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
       message?: string;
     }>("/auth/signup", { method: "POST", body: JSON.stringify(data) }),
 
@@ -355,12 +464,13 @@ export const api = {
       avatarUrl?: string;
       startupProfileId?: number;
       companyId?: number;
-      accountType?: "STARTUP" | "COMPANY";
+      providerId?: number;
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
     }>(`/auth/user/${userId}`),
 
   updateUser: (
     userId: number,
-    data: { name?: string; email?: string; cnpj?: string; phone?: string; avatarUrl?: string; accountType?: "STARTUP" | "COMPANY" }
+    data: { name?: string; email?: string; cnpj?: string; phone?: string; avatarUrl?: string; accountType?: "STARTUP" | "COMPANY" | "PROVIDER" }
   ) =>
     request<{
       success: boolean;
@@ -372,7 +482,8 @@ export const api = {
       avatarUrl?: string;
       startupProfileId?: number;
       companyId?: number;
-      accountType?: "STARTUP" | "COMPANY";
+      providerId?: number;
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
     }>(`/auth/user/${userId}`, { method: "PUT", body: JSON.stringify(data) }),
 
   deleteUser: (userId: number) =>
@@ -409,12 +520,13 @@ export const api = {
   ) =>
     request<StartupProfileData>(`/startups/${id}/preferences`, { method: "PUT", body: JSON.stringify(data) }),
 
-  // Oportunidades e Empresas
-  getOpportunities: (type?: string, query?: string, companyId?: number) => {
+  // Oportunidades e Demandas
+  getOpportunities: (type?: string, query?: string, companyId?: number, startupId?: number) => {
     const params = new URLSearchParams();
     if (type && type !== "Todos") params.set("type", type);
     if (query) params.set("query", query);
     if (companyId) params.set("companyId", String(companyId));
+    if (startupId) params.set("startupId", String(startupId));
     const queryString = params.toString() ? `?${params.toString()}` : "";
     return request<OpportunityItem[]>(`/opportunities${queryString}`);
   },
@@ -431,6 +543,9 @@ export const api = {
     status?: string;
     companyId?: number;
     companyName?: string;
+    startupId?: number;
+    startupName?: string;
+    targetCategory?: string;
   }) =>
     request<OpportunityItem>("/opportunities", { method: "POST", body: JSON.stringify(data) }),
 
@@ -445,6 +560,8 @@ export const api = {
       externalUrl?: string;
       status?: string;
       companyId?: number;
+      startupId?: number;
+      targetCategory?: string;
     }
   ) =>
     request<OpportunityItem>(`/opportunities/${id}`, {
@@ -464,6 +581,118 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  // Prestadores de Serviço (Providers)
+  getProviders: (category?: string, query?: string, startupId?: number) => {
+    const s = getSession();
+    const params = new URLSearchParams();
+    if (category && category !== "Todos") params.set("category", category);
+    if (query) params.set("q", query);
+    const resolvedStartupId = startupId ?? (s?.accountType === "STARTUP" ? s?.startupProfileId : undefined);
+    if (resolvedStartupId) params.set("startupId", String(resolvedStartupId));
+    if (s?.userId && s?.accountType === "STARTUP") params.set("userId", String(s.userId));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return request<ServiceProviderData[]>(`/providers${qs}`);
+  },
+  getProvider: (id: number, startupId?: number) => {
+    const s = getSession();
+    const params = new URLSearchParams();
+    const resolvedStartupId = startupId ?? (s?.accountType === "STARTUP" ? s?.startupProfileId : undefined);
+    if (resolvedStartupId) params.set("startupId", String(resolvedStartupId));
+    if (s?.userId && s?.accountType === "STARTUP") params.set("userId", String(s.userId));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return request<ServiceProviderData>(`/providers/${id}${qs}`);
+  },
+  getProviderByUser: (userId: number) => request<ServiceProviderData>(`/providers/user/${userId}`),
+  createProvider: (data: Partial<ServiceProviderData>) =>
+    request<ServiceProviderData>("/providers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateProvider: (id: number, data: Partial<ServiceProviderData>) =>
+    request<ServiceProviderData>(`/providers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  // Startups em Tração recomendadas/salvas para o Prestador (com cálculo real de IA)
+  getProviderMatchingStartups: (options?: { providerId?: number; onlySaved?: boolean }) => {
+    const s = getSession();
+    const params = new URLSearchParams();
+    const resolvedProviderId = options?.providerId ?? s?.providerId;
+    if (resolvedProviderId) params.set("providerId", String(resolvedProviderId));
+    if (s?.userId) params.set("userId", String(s.userId));
+    if (options?.onlySaved) params.set("onlySaved", "true");
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return request<any[]>(`/providers/matching-startups${qs}`);
+  },
+
+  toggleProviderSavedStartup: (startupId: number, providerId?: number) => {
+    const s = getSession();
+    const params = new URLSearchParams();
+    const resolvedProviderId = providerId ?? s?.providerId;
+    if (resolvedProviderId) params.set("providerId", String(resolvedProviderId));
+    if (s?.userId) params.set("userId", String(s.userId));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return request<{
+      saved: boolean;
+      startupId: number;
+      savedStartupIds: number[];
+      savedStartupsCount: number;
+    }>(`/providers/saved-startups/${startupId}${qs}`, {
+      method: "POST",
+    });
+  },
+
+  // Conexões e Solicitações entre Startups e Prestadores
+  getConnections: (params?: { startupId?: number; providerId?: number; status?: string }) => {
+    const s = getSession();
+    const search = new URLSearchParams();
+    const stId = params?.startupId ?? (s?.accountType === "STARTUP" ? s?.startupProfileId : undefined);
+    const prId = params?.providerId ?? (s?.accountType === "PROVIDER" ? s?.providerId : undefined);
+    if (stId) search.set("startupId", String(stId));
+    if (prId) search.set("providerId", String(prId));
+    if (s?.userId) search.set("userId", String(s.userId));
+    if (s?.accountType) search.set("role", s.accountType);
+    if (params?.status && params.status !== "ALL") search.set("status", params.status);
+    const qs = search.toString() ? `?${search.toString()}` : "";
+    return request<ServiceConnectionItem[]>(`/connections${qs}`);
+  },
+  createConnection: (payload: CreateServiceConnectionPayload) =>
+    request<ServiceConnectionItem>("/connections", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateConnectionStatus: (id: number, status: "ACCEPTED" | "REJECTED" | "PENDING" | string) =>
+    request<ServiceConnectionItem>(`/connections/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+  acceptConnection: (id: number) =>
+    request<ServiceConnectionItem>(`/connections/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "ACCEPTED" }),
+    }),
+  rejectConnection: (id: number) =>
+    request<ServiceConnectionItem>(`/connections/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "REJECTED" }),
+    }),
+  deleteConnection: (id: number) =>
+    request<{ deleted: boolean; id: number }>(`/connections/${id}`, {
+      method: "DELETE",
+    }),
+
+  // Provider Dashboard Summary
+  getProviderDashboardSummary: (providerId?: number) => {
+    const s = getSession();
+    const params = new URLSearchParams();
+    const resolvedId = providerId ?? s?.providerId;
+    if (resolvedId) params.set("providerId", String(resolvedId));
+    if (s?.userId) params.set("userId", String(s.userId));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return request<any>(`/providers/dashboard-summary${qs}`);
+  },
 
   // Matches e IA
   getMatches: (startupId?: number) => {
@@ -667,6 +896,30 @@ export const api = {
       impact: stripMarkdownToPlainText(res.impact),
     })),
 
+  enhanceProviderServicesAI: (data: {
+    text: string;
+    category?: string;
+    providerName?: string;
+    mainService?: string;
+    providerType?: string;
+    fieldType?: "bio" | "services" | "project";
+  }) =>
+    request<{
+      enhancedText: string;
+      tags: string[];
+      toolsAndSkills?: string;
+      technologies?: string;
+      mainService?: string;
+      serviceHighlights?: string[];
+      valueProposition?: string;
+    }>("/ai/enhance-provider-services", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }).then((res) => ({
+      ...res,
+      enhancedText: stripMarkdownToPlainText(res.enhancedText),
+    })),
+
   verifyTractionPdfAI: (data: {
     fileName: string;
     fileBase64: string;
@@ -696,6 +949,10 @@ export const api = {
     messages: Array<{ from: string; text: string }>,
     startupId?: number,
     extra?: {
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
+      providerId?: number;
+      userId?: number;
+      provider?: Partial<ServiceProviderData> | null;
       selectedOpportunity?: Partial<OpportunityItem> | null;
       attachmentName?: string;
       attachmentBase64?: string;
@@ -704,7 +961,12 @@ export const api = {
   ) =>
     request<{ reply: string }>("/ai/chat", {
       method: "POST",
-      body: JSON.stringify({ messages, startupId, ...(extra || {}) }),
+      body: JSON.stringify({
+        messages,
+        startupId,
+        userId: extra?.userId ?? getSession()?.userId,
+        ...(extra || {}),
+      }),
     }).then((res) => ({
       ...res,
       reply: stripMarkdownToPlainText(res.reply),

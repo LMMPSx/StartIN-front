@@ -157,47 +157,109 @@ export function Opportunities({
   }, [tracaoActive, type]);
 
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      api.getMatches(startupId).catch(() => [] as MatchItem[]),
-      api.getOpportunities().catch(() => [] as OpportunityItem[]),
-    ])
-      .then(([matches, opps]) => {
+    let cancelled = false;
+    const loadOpportunitiesAndMatches = async () => {
+      setLoading(true);
+      try {
+        // 1. Busca os matches e oportunidades já persistidos no MySQL
+        let matches = await api.getMatches(startupId).catch(() => [] as MatchItem[]);
+        let opps = await api.getOpportunities().catch(() => [] as OpportunityItem[]);
+
+        const hasEdital =
+          opps.some((o) => (o.type || "").toUpperCase() === "EDITAL") ||
+          matches.some((m) => (m.opportunityType || "").toUpperCase() === "EDITAL");
+        const hasEvento =
+          opps.some((o) => (o.type || "").toUpperCase() === "EVENTO") ||
+          matches.some((m) => (m.opportunityType || "").toUpperCase() === "EVENTO");
+        const hasCompatibleMatches = matches.some((m) => {
+          const t = (m.opportunityType || "").toUpperCase();
+          if (tracaoActive) {
+            return t !== "POC" && t !== "PRIMEIRA_COMPRA";
+          }
+          return t !== "COMPRA";
+        });
+
+        // 2. Se não houver matches, ou se faltarem Editais / Eventos, ou se os matches não forem compatíveis com o estágio,
+        // aciona o recalculateMatches com raspagem ativa da web (scrape=true) para popular o banco via IA!
+        if (matches.length === 0 || !hasEdital || !hasEvento || !hasCompatibleMatches) {
+          const calculated = await api
+            .recalculateMatches(startupId || profile?.id, true)
+            .catch(() => [] as MatchItem[]);
+          if (calculated && calculated.length > 0) {
+            matches = calculated;
+            opps = await api.getOpportunities().catch(() => [] as OpportunityItem[]);
+          }
+        }
+        if (cancelled) return;
+
         const matchByOppKey = new Map<string, MatchItem>();
         matches.forEach((m) => {
           if (m.opportunityId) matchByOppKey.set(String(m.opportunityId), m);
           if (m.opportunityCode) matchByOppKey.set(String(m.opportunityCode), m);
         });
 
-        const formatted: OpportunityItem[] = opps.map((o) => {
-          const matched =
-            matchByOppKey.get(String(o.id)) ||
-            (o.code ? matchByOppKey.get(String(o.code)) : undefined);
-          const calculatedScore =
-            matched?.matchScore ?? computeAuditedClientMatchScore(profile, o);
-
-          return {
-            id: o.id,
-            code: o.code,
-            type: formatOppType(o.type),
-            title: o.title,
-            short: o.shortDescription || o.short || o.description,
-            description: o.description,
-            match: calculatedScore,
-            meta: o.meta || o.metaInfo || "Prazo 15/10/2026 · Brasil · Remoto",
-            tags: o.tags || "setor • tecnologia • objetivo",
-            color: getBadgeColorByType(o.type, o.color),
-            status: o.status,
-            externalUrl: o.externalUrl,
-            companyId: o.companyId ?? matched?.opportunityCompanyId,
-            companyName: o.companyName ?? matched?.opportunityCompanyName,
-          };
+        // Combina oportunidades da tabela opportunities com eventuais matches recém-criados
+        const rawOpps: OpportunityItem[] = [...opps];
+        const existingIds = new Set(rawOpps.map((o) => String(o.id)));
+        matches.forEach((m) => {
+          if (m.opportunityId && !existingIds.has(String(m.opportunityId))) {
+            rawOpps.push({
+              id: m.opportunityId,
+              code: m.opportunityCode,
+              type: m.opportunityType || "EDITAL",
+              title: m.opportunityTitle || "Oportunidade StartIn",
+              shortDescription: m.opportunityShort || m.justification,
+              description: m.opportunityDescription || m.justification,
+              match: m.matchScore,
+              meta: m.opportunityMeta || "Inscrições abertas · Brasil · Remoto",
+              tags: m.opportunityTags || "setor • tecnologia • objetivo",
+              color: m.opportunityColor,
+              externalUrl: m.externalUrl,
+              companyId: m.opportunityCompanyId,
+              companyName: m.opportunityCompanyName,
+            });
+            existingIds.add(String(m.opportunityId));
+          }
         });
+
+        const formatted: OpportunityItem[] = rawOpps
+          .filter((o) => (o.type || "").toUpperCase() !== "SERVICO")
+          .map((o) => {
+            const matched =
+              matchByOppKey.get(String(o.id)) ||
+              (o.code ? matchByOppKey.get(String(o.code)) : undefined);
+            const calculatedScore =
+              matched?.matchScore ?? computeAuditedClientMatchScore(profile, o);
+
+            return {
+              id: o.id,
+              code: o.code,
+              type: formatOppType(o.type),
+              title: o.title,
+              short: o.shortDescription || o.short || o.description,
+              description: o.description,
+              match: calculatedScore,
+              meta: o.meta || o.metaInfo || "Prazo 15/10/2026 · Brasil · Remoto",
+              tags: o.tags || "setor • tecnologia • objetivo",
+              color: getBadgeColorByType(o.type, o.color),
+              status: o.status,
+              externalUrl: o.externalUrl,
+              companyId: o.companyId ?? matched?.opportunityCompanyId,
+              companyName: o.companyName ?? matched?.opportunityCompanyName,
+            };
+          });
         formatted.sort((a, b) => b.match - a.match);
         setItems(formatted);
-      })
-      .finally(() => setLoading(false));
-  }, [startupId, profile?.mainArea, profile?.technologies, profile?.currentStage]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadOpportunitiesAndMatches();
+    return () => {
+      cancelled = true;
+    };
+  }, [startupId, profile?.id, profile?.mainArea, profile?.technologies, profile?.currentStage]);
 
   const availableTypeTabs: OpportunityType[] = tracaoActive
     ? ["Todos", "Editais", "Eventos", "Compras"]

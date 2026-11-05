@@ -24,6 +24,7 @@ import {
   AiPromptTutorialGuide,
   BackButton,
   Field,
+  LocationField,
   PageTitle,
   PrimaryButton,
   TextAreaField,
@@ -38,7 +39,16 @@ import {
   type StartupMatchItem,
 } from "@/lib/api";
 import type { Screen } from "@/types/startin";
-import { formatOppType, getBadgeColorByType, getInitials } from "@/utils/formatters";
+import {
+  formatCityStateOnly,
+  formatCNPJ,
+  formatOppType,
+  formatPhoneBR,
+  getBadgeColorByType,
+  getInitials,
+  isValidCNPJ,
+  isValidPhoneBR,
+} from "@/utils/formatters";
 import { COMPANY_SECTOR_AREAS, SUGGESTED_COMPANY_TOPICS } from "./OnboardingScreen";
 
 type SortOption = "match-desc" | "match-asc" | "name-asc" | "name-desc";
@@ -2032,8 +2042,17 @@ export function CompanyProfileScreen({
     }
   }, [companyId, company]);
 
-  const setField = (key: keyof CompanyProfileData) => (val: string) =>
+  const setField = (key: keyof CompanyProfileData) => (val: string) => {
+    if (key === "cnpj") {
+      setForm((prev) => ({ ...prev, cnpj: formatCNPJ(val) }));
+      return;
+    }
+    if (key === "phone") {
+      setForm((prev) => ({ ...prev, phone: formatPhoneBR(val) }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [key]: val }));
+  };
 
   // Tags ativas da empresa
   const activeTagsList = useMemo(() => {
@@ -2185,9 +2204,21 @@ export function CompanyProfileScreen({
   };
 
   const handleSave = async () => {
-    setSaving(true);
     setSavedNotice("");
     setAiError("");
+    if (!isValidCNPJ(form.cnpj)) {
+      setAiError(
+        "Informe um CNPJ autêntico e válido com exatos 14 dígitos (00.000.000/0000-00). A plataforma opera exclusivamente com CNPJ."
+      );
+      return;
+    }
+    if (form.phone && !isValidPhoneBR(form.phone)) {
+      setAiError(
+        "Informe um telefone/celular autêntico com DDD válido, ex: (81) 99999-9999."
+      );
+      return;
+    }
+    setSaving(true);
     try {
       const targetId = form.id || session?.companyId || 1;
       const payload: CompanyProfileData = {
@@ -2343,7 +2374,12 @@ export function CompanyProfileScreen({
             </label>
           </div>
 
-          <Field label="Localização" value={form.location || ""} onChange={setField("location")} />
+          <LocationField
+            label="Localização (Cidade, UF)"
+            placeholder="Recife, PE"
+            value={form.location || ""}
+            onChange={setField("location")}
+          />
           <Field
             label="Telefone / WhatsApp corporativo"
             placeholder="(00) 00000-0000"

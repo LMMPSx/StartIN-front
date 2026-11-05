@@ -11,8 +11,14 @@ import {
   X,
 } from "@/icons";
 import { BackButton, PageTitle } from "@/components/startin/CommonUI";
-import { api, type OpportunityItem, type StartupProfileData } from "@/lib/api";
-import type { Screen } from "@/types/startin";
+import {
+  api,
+  getSession,
+  type OpportunityItem,
+  type ServiceProviderData,
+  type StartupProfileData,
+} from "@/lib/api";
+import type { AccountType, Screen } from "@/types/startin";
 import { formatOppType, stripMarkdownToPlainText } from "@/utils/formatters";
 import { getLocalSavedOpportunities } from "./OpportunitiesScreen";
 
@@ -20,15 +26,24 @@ export function Assistant({
   go,
   profile,
   startupId,
+  accountType = "STARTUP",
+  providerProfile,
   selectedOpportunity,
   onSelectOpportunity,
 }: {
   go: (s: Screen) => void;
   profile: StartupProfileData | null;
   startupId?: number;
+  accountType?: AccountType;
+  providerProfile?: ServiceProviderData | null;
   selectedOpportunity?: OpportunityItem | null;
   onSelectOpportunity?: (opp: OpportunityItem | null) => void;
 }) {
+  const isProvider = accountType === "PROVIDER";
+  const session = getSession();
+  const [resolvedProvider, setResolvedProvider] = useState<ServiceProviderData | null>(
+    providerProfile || null
+  );
   const [activeOpp, setActiveOpp] = useState<OpportunityItem | null>(
     selectedOpportunity || null
   );
@@ -45,6 +60,19 @@ export function Assistant({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (providerProfile) {
+      setResolvedProvider(providerProfile);
+    } else if (isProvider && session?.userId) {
+      api
+        .getProviderByUser(session.userId)
+        .then((p) => {
+          if (p) setResolvedProvider(p);
+        })
+        .catch(() => {});
+    }
+  }, [isProvider, providerProfile, session?.userId]);
+
   // Sincroniza oportunidade pré-selecionada (ex: vinda da aba Salvos)
   useEffect(() => {
     if (selectedOpportunity) {
@@ -52,8 +80,48 @@ export function Assistant({
     }
   }, [selectedOpportunity]);
 
-  // Carrega SOMENTE as oportunidades salvas na aba 'Salvos' para o seletor do chat
+  // Carrega itens salvos para o seletor do chat (Startups Salvas para Prestador; Oportunidades Salvas para Startup)
   useEffect(() => {
+    if (isProvider) {
+      api
+        .getProviderMatchingStartups({ onlySaved: true })
+        .then((savedStartups) => {
+          const mapped: OpportunityItem[] = (Array.isArray(savedStartups) ? savedStartups : []).map(
+            (st: any) => ({
+              id: st.startupId ?? st.id,
+              type: "Startup em Tração",
+              title: st.name || "Startup em Tração",
+              short: st.description || st.problem || "",
+              description: [
+                st.description ? `Descrição: ${st.description}` : "",
+                st.problem ? `Problema/Desafio: ${st.problem}` : "",
+                st.openDemandTitle ? `Demanda aberta: ${st.openDemandTitle}` : "",
+                st.technologies ? `Tecnologias: ${st.technologies}` : "",
+              ]
+                .filter(Boolean)
+                .join("\n"),
+              match: st.matchScore ?? 0,
+              meta: `${st.mainArea || "Inovação"} · ${st.location || "Brasil"}`,
+              tags: st.technologies || st.mainArea || "",
+              companyName: st.name,
+            })
+          );
+          setAvailableOpps(mapped);
+          setActiveOpp((prev) => {
+            if (!prev) return null;
+            return (
+              mapped.find(
+                (item) =>
+                  String(item.id) === String(prev.id) ||
+                  item.title.toLowerCase() === prev.title.toLowerCase()
+              ) || null
+            );
+          });
+        })
+        .catch(() => setAvailableOpps([]));
+      return;
+    }
+
     const targetId = profile?.id || startupId;
     const localSaved = getLocalSavedOpportunities(targetId);
     Promise.all([
@@ -82,7 +150,7 @@ export function Assistant({
             short: m.opportunityShort || catalogItem?.short || m.justification,
             description:
               m.opportunityDescription || catalogItem?.description || m.justification,
-            match: m.matchScore || catalogItem?.match || 92,
+            match: m.matchScore || catalogItem?.match || 0,
             meta: m.opportunityMeta || catalogItem?.meta || "Brasil",
             tags: m.opportunityTags || catalogItem?.tags || "",
             companyId: m.opportunityCompanyId ?? catalogItem?.companyId,
@@ -118,10 +186,31 @@ export function Assistant({
         return stillSaved || null;
       });
     });
-  }, [profile?.id, startupId]);
+  }, [isProvider, profile?.id, startupId]);
 
-  // Mensagem inicial contextualizada conforme a oportunidade selecionada
+  // Mensagem inicial contextualizada conforme o perfil (Prestador ou Startup) e o item selecionado
   useEffect(() => {
+    if (isProvider) {
+      const provName = resolvedProvider?.name || session?.name || "Prestador";
+      const provCat = resolvedProvider?.category || "Serviços Especializados";
+      if (activeOpp) {
+        setMessages([
+          {
+            from: "ai",
+            text: `Startup salva em foco: "${activeOpp.title}" (${activeOpp.meta}).\n\nJá carreguei seu perfil profissional de ${provName} (${provCat}) e os dados desta startup em Tração. Você pode pedir uma proposta comercial e técnica sob medida, estruturar sua mensagem de abordagem, sugerir escopo de entregáveis/sprints ou anexar um briefing em PDF no clipe abaixo!`,
+          },
+        ]);
+      } else {
+        setMessages([
+          {
+            from: "ai",
+            text: `Olá, ${provName}! Sou o Assistente IA da StartIn para Prestadores de Serviços (${provCat}).\n\nPosso responder qualquer dúvida sobre a atuação de prestadores na plataforma, modelos de contratação com startups em Tração (Squad, Projeto Fechado, Consultoria, Contrato PJ), precificação, otimização do seu perfil para aumentar o índice de match ou elaborar propostas técnicas e mensagens comerciais personalizadas!`,
+          },
+        ]);
+      }
+      return;
+    }
+
     const startupLabel = profile?.name || "sua startup";
     if (activeOpp) {
       setMessages([
@@ -140,7 +229,15 @@ export function Assistant({
         },
       ]);
     }
-  }, [activeOpp?.id, activeOpp?.title, profile?.name]);
+  }, [
+    isProvider,
+    activeOpp?.id,
+    activeOpp?.title,
+    profile?.name,
+    resolvedProvider?.name,
+    resolvedProvider?.category,
+    session?.name,
+  ]);
 
   useEffect(() => {
     if (messagesContainerRef.current) {
@@ -184,8 +281,12 @@ export function Assistant({
     const textToSend = (customPrompt ?? input).trim();
     if ((!textToSend && !attachmentName) || loading) return;
 
+    const defaultAttachmentPrompt = isProvider
+      ? "Analise o documento anexado e monte uma proposta técnica e comercial estruturada."
+      : "Analise o documento anexado e monte o template de submissão.";
+
     const visibleMessage = attachmentName
-      ? `${textToSend || "Analise o documento anexado e monte o template de submissão."}\n[Arquivo anexado: ${attachmentName}]`
+      ? `${textToSend || defaultAttachmentPrompt}\n[Arquivo anexado: ${attachmentName}]`
       : textToSend;
 
     const nextMessages: { from: "ai" | "me"; text: string }[] = [
@@ -201,8 +302,12 @@ export function Assistant({
     const payloadAttachmentText = attachmentText;
 
     try {
-      const targetStartupId = profile?.id || startupId;
+      const targetStartupId = isProvider ? undefined : profile?.id || startupId;
       const res = await api.chatAI(nextMessages, targetStartupId, {
+        accountType: isProvider ? "PROVIDER" : "STARTUP",
+        providerId: isProvider ? resolvedProvider?.id || session?.providerId : undefined,
+        userId: session?.userId,
+        provider: isProvider ? resolvedProvider : undefined,
         selectedOpportunity: activeOpp
           ? {
               id: activeOpp.id,
@@ -239,43 +344,78 @@ export function Assistant({
     setTimeout(() => setCopiedIdx(null), 2200);
   };
 
-  const templateQuickPrompts = [
-    "Gerar template completo de submissão pronto para preencher e enviar",
-    "Escrever proposta técnica detalhada e plano de trabalho para esta oportunidade",
-    "Criar texto persuasivo de mérito, diferencial tecnológico e impacto esperado",
-    "Redigir mensagem executiva de apresentação comercial da startup",
-  ];
+  const templateQuickPrompts = isProvider
+    ? [
+        "Gerar proposta comercial e técnica personalizada para atender uma startup em Tração",
+        "Criar mensagem persuasiva de abordagem inicial para solicitar conexão com startup",
+        "Sugerir escopo de entregáveis, cronograma de sprints e modelo de contrato PJ/Squad",
+        "Como otimizar meu perfil e portfólio para aumentar meu índice de match com startups?",
+      ]
+    : [
+        "Gerar template completo de submissão pronto para preencher e enviar",
+        "Escrever proposta técnica detalhada e plano de trabalho para esta oportunidade",
+        "Criar texto persuasivo de mérito, diferencial tecnológico e impacto esperado",
+        "Redigir mensagem executiva de apresentação comercial da startup",
+      ];
+
+  const actorDisplayName = isProvider
+    ? resolvedProvider?.name || session?.name || "seu perfil de prestador"
+    : profile?.name || "sua startup";
 
   return (
     <>
       <BackButton label="Voltar para Home" onClick={() => go("dashboard")} />
       <PageTitle
-        title="Assistente IA — Gerador de Propostas & Templates"
-        description="Selecione uma oportunidade salva ou anexe um edital/documento para gerar templates estruturados e textos persuasivos com os dados da sua startup."
+        title={
+          isProvider
+            ? "Assistente IA — Propostas, Escopos & Consultoria para Prestadores"
+            : "Assistente IA — Gerador de Propostas & Templates"
+        }
+        description={
+          isProvider
+            ? "Tire dúvidas sobre sua atuação na plataforma, selecione uma startup salva ou anexe um briefing/escopo em PDF para gerar propostas comerciais, planos de entrega e mensagens de abordagem sob medida."
+            : "Selecione uma oportunidade salva ou anexe um edital/documento para gerar templates estruturados e textos persuasivos com os dados da sua startup."
+        }
       />
 
       <div className="mt-8 grid gap-5 lg:grid-cols-[.82fr_1.18fr]">
-        {/* Painel Esquerdo: Contexto da Oportunidade, Anexo e Ações de Template */}
+        {/* Painel Esquerdo: Contexto da Oportunidade/Startup, Anexo e Ações Rápidas */}
         <aside className="flex flex-col justify-between rounded-2xl bg-[#111827] p-6 text-white lg:min-h-[540px]">
           <div>
             <div className="flex items-center justify-between">
               <Bot size={25} className="text-[#FEC908]" />
               <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-[#FEC908]">
-                Exclusivo Startup
+                {isProvider ? "Exclusivo Prestador" : "Exclusivo Startup"}
               </span>
             </div>
             <h2 className="mt-5 text-[23px] font-extrabold leading-7 tracking-[-.04em]">
-              Estruture sua inscrição com IA
+              {isProvider
+                ? "Estruture propostas e conexões com IA"
+                : "Estruture sua inscrição com IA"}
             </h2>
             <p className="mt-2.5 text-xs leading-5 text-gray-300">
-              A IA combina automaticamente o perfil de{" "}
-              <strong className="text-white">{profile?.name || "sua startup"}</strong> com a oportunidade selecionada e arquivos anexados.
+              {isProvider ? (
+                <>
+                  A IA combina automaticamente as competências de{" "}
+                  <strong className="text-white">{actorDisplayName}</strong>
+                  {resolvedProvider?.category ? ` (${resolvedProvider.category})` : ""} com a
+                  startup em Tração selecionada e documentos anexados.
+                </>
+              ) : (
+                <>
+                  A IA combina automaticamente o perfil de{" "}
+                  <strong className="text-white">{actorDisplayName}</strong> com a oportunidade
+                  selecionada e arquivos anexados.
+                </>
+              )}
             </p>
 
-            {/* Seletor de Oportunidade / Edital Alvo (apenas aba Salvos) */}
+            {/* Seletor de Oportunidade / Demanda Salva (Prestador) ou Oportunidade Salva (Startup) */}
             <div className="mt-5 rounded-xl border border-white/15 bg-white/5 p-3.5">
               <label className="block text-[10.5px] font-extrabold uppercase tracking-wider text-[#FEC908]">
-                Oportunidade / Edital em foco (Salvos)
+                {isProvider
+                  ? "Demanda / Trabalho em foco (Oportunidades salvas)"
+                  : "Oportunidade / Edital em foco (Salvos)"}
               </label>
               <select
                 value={activeOpp ? String(activeOpp.title) : ""}
@@ -289,12 +429,18 @@ export function Assistant({
               >
                 <option value="">
                   {availableOpps.length > 0
-                    ? "Selecionar oportunidade salva..."
+                    ? isProvider
+                      ? "Selecionar oportunidade / demanda salva..."
+                      : "Selecionar oportunidade salva..."
+                    : isProvider
+                    ? "Nenhuma oportunidade salva na aba 'Oportunidades salvas'"
                     : "Nenhuma oportunidade salva na aba 'Salvos'"}
                 </option>
                 {availableOpps.map((opp) => (
                   <option key={`${opp.id}-${opp.title}`} value={opp.title}>
-                    [{formatOppType(opp.type)}] {opp.title}
+                    {isProvider
+                      ? `${opp.title} (${opp.meta})`
+                      : `[${formatOppType(opp.type)}] ${opp.title}`}
                   </option>
                 ))}
               </select>
@@ -304,18 +450,28 @@ export function Assistant({
                   onClick={() => go("for-you")}
                   className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#FEC908] hover:underline"
                 >
-                  Salvar oportunidades em &quot;Para você&quot; <ArrowRight size={11} />
+                  {isProvider ? (
+                    <>
+                      Salvar demandas e oportunidades em &quot;Recomendações&quot; <ArrowRight size={11} />
+                    </>
+                  ) : (
+                    <>
+                      Salvar oportunidades em &quot;Para você&quot; <ArrowRight size={11} />
+                    </>
+                  )}
                 </button>
               )}
               {activeOpp && (
                 <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-gray-300">
-                  {activeOpp.companyName ? `Empresa: ${activeOpp.companyName} · ` : ""}
+                  {!isProvider && activeOpp.companyName
+                    ? `Empresa: ${activeOpp.companyName} · `
+                    : ""}
                   {activeOpp.meta}
                 </p>
               )}
             </div>
 
-            {/* Botão rápido de anexar documento do edital */}
+            {/* Botão rápido de anexar documento */}
             <div className="mt-3">
               <button
                 type="button"
@@ -325,15 +481,19 @@ export function Assistant({
                 <Paperclip size={14} />
                 {attachmentName
                   ? `Anexado: ${attachmentName}`
+                  : isProvider
+                  ? "Anexar PDF / Escopo / Briefing / Contrato"
                   : "Anexar PDF / Edital / Regulamento"}
               </button>
             </div>
           </div>
 
-          {/* Ações focadas em Geração de Templates e Propostas */}
+          {/* Ações Rápidas Correlatas ao Perfil */}
           <div className="mt-6 space-y-2">
             <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">
-              Modelos rápidos de geração
+              {isProvider
+                ? "Perguntas e modelos úteis para prestadores"
+                : "Modelos rápidos de geração"}
             </p>
             {templateQuickPrompts.map((promptText) => (
               <button
@@ -359,17 +519,22 @@ export function Assistant({
                   <Bot size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-extrabold text-[#111827]">STARTIN IA · TEMPLATES</p>
+                  <p className="text-sm font-extrabold text-[#111827]">
+                    {isProvider ? "STARTIN IA · PRESTADORES" : "STARTIN IA · TEMPLATES"}
+                  </p>
                   <p className="text-[10.5px] text-[#7a8793]">
                     {activeOpp
                       ? `Foco ativo: ${activeOpp.title}`
+                      : isProvider
+                      ? "Pronta para estruturar propostas, escopos técnicos, precificação e conexões com startups"
                       : "Pronta para estruturar templates de editais, POCs e compras"}
                   </p>
                 </div>
               </div>
               {activeOpp && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#fef9c3] px-2.5 py-1 text-[10px] font-extrabold text-[#854d0e]">
-                  <Sparkles size={11} /> {formatOppType(activeOpp.type)}
+                  <Sparkles size={11} />{" "}
+                  {isProvider ? "Startup em Tração" : formatOppType(activeOpp.type)}
                 </span>
               )}
             </div>
@@ -414,7 +579,9 @@ export function Assistant({
             {loading && (
               <div className="flex justify-start">
                 <div className="rounded-2xl rounded-bl-sm bg-[#f0f5f8] px-4 py-3 text-xs font-semibold text-[#557089]">
-                  Interpretando sua pergunta e analisando o contexto da startup...
+                  {isProvider
+                    ? "Interpretando sua pergunta e analisando seu perfil de prestador..."
+                    : "Interpretando sua pergunta e analisando o contexto da startup..."}
                 </div>
               </div>
             )}
@@ -449,7 +616,11 @@ export function Assistant({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              title="Anexar arquivo do edital ou documento (PDF, DOCX, TXT)"
+              title={
+                isProvider
+                  ? "Anexar briefing, escopo ou contrato (PDF, DOCX, TXT)"
+                  : "Anexar arquivo do edital ou documento (PDF, DOCX, TXT)"
+              }
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#d8e0e7] bg-white text-[#111827] transition hover:bg-gray-100"
             >
               <Paperclip size={15} />
@@ -458,7 +629,11 @@ export function Assistant({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="Pergunte sobre a plataforma, tire dúvidas do edital, peça propostas ou anexe PDF..."
+              placeholder={
+                isProvider
+                  ? "Pergunte sobre propostas, abordagem para startups, escopo de sprints, precificação ou anexe PDF..."
+                  : "Pergunte sobre a plataforma, tire dúvidas do edital, peça propostas ou anexe PDF..."
+              }
               className="h-9 flex-1 bg-transparent px-2 text-xs outline-none placeholder:text-[#99a4ad]"
             />
             <button

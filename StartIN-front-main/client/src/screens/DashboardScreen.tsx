@@ -36,10 +36,35 @@ export function Dashboard({
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
 
   useEffect(() => {
-    api
-      .getDashboardSummary(startupId)
-      .then((res) => setSummary(res))
-      .catch(() => {});
+    let cancelled = false;
+    const initDashboard = async () => {
+      try {
+        const res = await api.getDashboardSummary(startupId);
+        if (cancelled) return;
+        setSummary(res);
+
+        // Se for o primeiro acesso da startup (0 oportunidades calculadas),
+        // executa automaticamente a busca inicial via RAG e calcula os matches.
+        // Após a primeira vez, atualiza apenas conforme o agendamento diário das 08:00 da manhã.
+        const firstSyncKey = `startin_first_rag_sync_${startupId || "default"}`;
+        if ((res?.opportunitiesFoundCount ?? 0) === 0 && !localStorage.getItem(firstSyncKey)) {
+          const calc = await api.recalculateMatches(startupId, true).catch(() => []);
+          if (calc && calc.length > 0) {
+            localStorage.setItem(firstSyncKey, "1");
+            const refreshed = await api.getDashboardSummary(startupId).catch(() => null);
+            if (!cancelled && refreshed) {
+              setSummary(refreshed);
+            }
+          }
+        } else if ((res?.opportunitiesFoundCount ?? 0) > 0) {
+          localStorage.setItem(firstSyncKey, "1");
+        }
+      } catch {}
+    };
+    initDashboard();
+    return () => {
+      cancelled = true;
+    };
   }, [startupId]);
 
   const greeting = summary?.greeting || `Olá, ${startupName || "Nexa Health"} 👋`;
