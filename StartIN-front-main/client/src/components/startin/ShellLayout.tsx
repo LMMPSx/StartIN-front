@@ -20,8 +20,10 @@ import {
   UserRound,
   X,
 } from "@/icons";
-import { clearSession, type NotificationItem } from "@/lib/api";
+import { clearSession, isProUser, type NotificationItem } from "@/lib/api";
+import { VerifiedProBadge } from "@/components/startin/PlanComponents";
 import {
+  NAV_ITEMS_ADMIN,
   NAV_ITEMS_COMPANY,
   NAV_ITEMS_PROVIDER,
   NAV_ITEMS_STARTUP,
@@ -82,6 +84,7 @@ const SCREEN_BREADCRUMB_LABELS: Record<Screen, string> = {
   "my-service-demands": "Demandas p/ prestadores",
   "create-service-demand": "Lançar demanda de serviço",
   "edit-service-demand": "Editar demanda de serviço",
+  admin: "Painel Administrativo",
 };
 
 export function AuthShell({
@@ -152,9 +155,13 @@ export function Sidebar({
   savedCount?: number;
   onLogout?: () => void;
 }) {
+  const isAdmin = accountType === "ADMIN";
   const isCompany = accountType === "COMPANY";
   const isProvider = accountType === "PROVIDER";
-  const navItems = isProvider
+  const isPro = isProUser();
+  const navItems = isAdmin
+    ? NAV_ITEMS_ADMIN
+    : isProvider
     ? NAV_ITEMS_PROVIDER
     : isCompany
     ? NAV_ITEMS_COMPANY
@@ -162,7 +169,13 @@ export function Sidebar({
     ? NAV_ITEMS_STARTUP_TRACAO
     : NAV_ITEMS_STARTUP;
 
-  const roleLabel = isProvider ? "Prestador" : isCompany ? "Empresa" : "Startup";
+  const roleLabel = isAdmin
+    ? "Admin"
+    : isProvider
+    ? "Prestador"
+    : isCompany
+    ? "Empresa"
+    : "Startup";
 
   return (
     <aside
@@ -180,15 +193,22 @@ export function Sidebar({
           className="flex items-center gap-2 text-left"
         >
           <Logo inverted />
-          <span
-            className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${
-              isCompany
-                ? "bg-white text-[#111827]"
-                : "bg-[#FEC908] text-[#111827]"
-            }`}
-          >
-            {roleLabel}
-          </span>
+          <div className="flex items-center gap-1">
+            <span
+              className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${
+                isCompany
+                  ? "bg-white text-[#111827]"
+                  : "bg-[#FEC908] text-[#111827]"
+              }`}
+            >
+              {roleLabel}
+            </span>
+            {isPro && !isAdmin && (
+              <span className="rounded-full bg-[#FEC908] px-1.5 py-0.5 text-[8.5px] font-black uppercase text-[#111827]">
+                PRO
+              </span>
+            )}
+          </div>
         </button>
         <button
           onClick={onClose}
@@ -241,34 +261,38 @@ export function Sidebar({
         <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-gray-400">
           Conta ({roleLabel})
         </p>
-        <button
-          onClick={() => {
-            go(isProvider ? "provider-profile" : isCompany ? "company-profile" : "account");
-            onClose();
-          }}
-          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-            screen === "account" || screen === "startup" || screen === "company-profile" || screen === "provider-profile"
-              ? "bg-white text-[#111827] shadow-xs"
-              : "text-gray-300 hover:bg-white/10 hover:text-white"
-          }`}
-        >
-          {isProvider ? <Briefcase size={17} /> : isCompany ? <Building2 size={17} /> : <UserRound size={17} />}
-          {isProvider ? "Meu perfil" : isCompany ? "Minha empresa" : "Conta e acesso"}
-        </button>
-        <button
-          onClick={() => {
-            go("settings");
-            onClose();
-          }}
-          className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-            screen === "settings"
-              ? "bg-white text-[#111827] shadow-xs"
-              : "text-gray-300 hover:bg-white/10 hover:text-white"
-          }`}
-        >
-          <SettingsIcon size={17} />
-          Configurações
-        </button>
+        {!isAdmin && (
+          <>
+            <button
+              onClick={() => {
+                go(isProvider ? "provider-profile" : isCompany ? "company-profile" : "account");
+                onClose();
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+                screen === "account" || screen === "startup" || screen === "company-profile" || screen === "provider-profile"
+                  ? "bg-white text-[#111827] shadow-xs"
+                  : "text-gray-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {isProvider ? <Briefcase size={17} /> : isCompany ? <Building2 size={17} /> : <UserRound size={17} />}
+              {isProvider ? "Meu perfil" : isCompany ? "Minha empresa" : "Conta e acesso"}
+            </button>
+            <button
+              onClick={() => {
+                go("settings");
+                onClose();
+              }}
+              className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+                screen === "settings"
+                  ? "bg-white text-[#111827] shadow-xs"
+                  : "text-gray-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <SettingsIcon size={17} />
+              Configurações
+            </button>
+          </>
+        )}
         <button
           onClick={() => {
             if (onLogout) {
@@ -522,8 +546,9 @@ export function AppShell({
                     {getInitials(startupName)}
                   </div>
                 )}
-                <span className="hidden text-xs font-semibold text-[#111827] md:block">
-                  {startupName || (isProvider ? "Meu perfil" : isCompany ? "Minha Empresa" : "Minha Startup")}
+                <span className="hidden items-center gap-1.5 text-xs font-semibold text-[#111827] md:inline-flex">
+                  <span>{startupName || (isProvider ? "Meu perfil" : isCompany ? "Minha Empresa" : "Minha Startup")}</span>
+                  {isProUser() && <VerifiedProBadge size={15} />}
                 </span>
                 <ChevronDown
                   size={14}
@@ -546,8 +571,9 @@ export function AppShell({
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-extrabold text-[#111827]">
-                        {startupName || (isCompany ? "Minha Empresa" : "Minha Startup")}
+                      <p className="flex items-center gap-1.5 truncate text-xs font-extrabold text-[#111827]">
+                        <span className="truncate">{startupName || (isCompany ? "Minha Empresa" : "Minha Startup")}</span>
+                        {isProUser() && <VerifiedProBadge size={15} />}
                       </p>
                       <p className="truncate text-[11px] text-[#7a8792]">
                         Fluxo {isProvider ? "Prestador de Serviços" : isCompany ? "Empresa Contratante" : "Startup"}
@@ -705,19 +731,17 @@ export function AppShell({
                       <SettingsIcon size={15} className="text-[#111827]" />
                       Configurações
                     </button>
-                    {!isCompany && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProfileMenuOpen(false);
-                          go("assistant");
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
-                      >
-                        <Bot size={15} className="text-[#111827]" />
-                        Assistente IA
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        go("assistant");
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+                    >
+                      <Bot size={15} className="text-[#111827]" />
+                      Assistente IA
+                    </button>
                   </div>
 
                   <div className="border-t border-[#edf1f4] p-2">

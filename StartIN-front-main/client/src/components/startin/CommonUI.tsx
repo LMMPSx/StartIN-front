@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, MapPin, Sparkles } from "@/icons";
 import type { OpportunityItem } from "@/lib/api";
+import { ProMemberBadge } from "@/components/startin/PlanComponents";
 import {
   detectBrowserCityState,
   formatCityStateOnly,
@@ -227,8 +228,8 @@ export function PageTitle({
   description,
   action,
 }: {
-  eyebrow?: string;
-  title: string;
+  eyebrow?: React.ReactNode;
+  title: React.ReactNode;
   description: string;
   action?: React.ReactNode;
 }) {
@@ -236,11 +237,11 @@ export function PageTitle({
     <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
       <div>
         {eyebrow && (
-          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.15em] text-[#8d98a2]">
+          <div className="mb-2 text-[10px] font-extrabold uppercase tracking-[.15em] text-[#8d98a2]">
             {eyebrow}
-          </p>
+          </div>
         )}
-        <h1 className="text-[29px] font-extrabold tracking-[-.05em] text-[#111827] md:text-[34px]">
+        <h1 className="flex flex-wrap items-center gap-2 text-[29px] font-extrabold tracking-[-.05em] text-[#111827] md:text-[34px]">
           {title}
         </h1>
         <p className="mt-2 text-sm text-[#4b5563]">{description}</p>
@@ -261,9 +262,12 @@ export function OpportunityCard({
   return (
     <article className="startin-opp-card flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-xs transition hover:border-[#111827] hover:shadow-md overflow-hidden min-w-0 w-full">
       <div className="flex items-start justify-between gap-3">
-        <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold shrink-0 ${badgeColor}`}>
-          {formatOppType(item.type)}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold shrink-0 ${badgeColor}`}>
+            {formatOppType(item.type)}
+          </span>
+          {Boolean(item.proMember) && <ProMemberBadge />}
+        </div>
         <div className="text-right shrink-0">
           <div className="text-[24px] font-extrabold tracking-[-.06em] text-[#15803d]">
             {item.match}%

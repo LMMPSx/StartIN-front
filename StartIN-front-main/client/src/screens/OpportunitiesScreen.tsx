@@ -14,9 +14,12 @@ import {
   Trash2,
 } from "@/icons";
 import { BackButton, OpportunityCard, PageTitle, PrimaryButton } from "@/components/startin/CommonUI";
+import { ProMemberBadge, VerMaisProBanner } from "@/components/startin/PlanComponents";
 import {
   api,
+  applyFreeTierFilter,
   getSession,
+  isProUser,
   type MatchItem,
   type OpportunityItem,
   type StartupProfileData,
@@ -33,7 +36,6 @@ const LEGACY_GLOBAL_SAVED_OPPS_KEY = "startin-saved-opps";
 
 function resolveProfileSavedStorageKey(startupId?: number): string | null {
   try {
-    // Remove a chave global legada para impedir vazamento de salvos entre perfis/contas
     if (localStorage.getItem(LEGACY_GLOBAL_SAVED_OPPS_KEY) !== null) {
       localStorage.removeItem(LEGACY_GLOBAL_SAVED_OPPS_KEY);
     }
@@ -44,17 +46,15 @@ function resolveProfileSavedStorageKey(startupId?: number): string | null {
     return null;
   }
 
-  const resolvedStartupId = startupId ?? session?.startupProfileId;
-  if (resolvedStartupId) {
-    return `startin-saved-opps-startup-${resolvedStartupId}`;
+  const resolvedStartupId = startupId ?? session?.startupProfileId ?? 0;
+  const resolvedUserId = session?.userId ?? 0;
+  const resolvedEmail = (session?.email || "").trim().toLowerCase();
+
+  if (!resolvedStartupId && !resolvedUserId && !resolvedEmail) {
+    return null;
   }
-  if (session?.userId) {
-    return `startin-saved-opps-user-${session.userId}`;
-  }
-  if (session?.email) {
-    return `startin-saved-opps-email-${session.email.trim().toLowerCase()}`;
-  }
-  return null;
+
+  return `startin-saved-opps-v2-u${resolvedUserId}-s${resolvedStartupId}-${resolvedEmail || "anon"}`;
 }
 
 export function getLocalSavedOpportunities(startupId?: number): OpportunityItem[] {
@@ -144,8 +144,10 @@ export function Opportunities({
   const [loading, setLoading] = useState(true);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("match-desc");
+  const [, setPlanVersion] = useState(0);
 
   const tracaoActive = isTracaoStage(profile?.currentStage);
+  const proActive = isProUser();
 
   // Se o estágio mudar, garante que a aba selecionada seja válida para o estágio
   useEffect(() => {
@@ -246,9 +248,15 @@ export function Opportunities({
               externalUrl: o.externalUrl,
               companyId: o.companyId ?? matched?.opportunityCompanyId,
               companyName: o.companyName ?? matched?.opportunityCompanyName,
+              proMember: Boolean(o.proMember),
             };
           });
-        formatted.sort((a, b) => b.match - a.match);
+        formatted.sort((a, b) => {
+          if (Boolean(a.proMember) !== Boolean(b.proMember)) {
+            return a.proMember ? -1 : 1;
+          }
+          return b.match - a.match;
+        });
         setItems(formatted);
       } finally {
         if (!cancelled) setLoading(false);
@@ -306,13 +314,28 @@ export function Opportunities({
     });
 
     const sorted = [...filtered];
-    if (sortBy === "match-desc") sorted.sort((a, b) => b.match - a.match);
-    else if (sortBy === "match-asc") sorted.sort((a, b) => a.match - b.match);
+    if (sortBy === "match-desc") {
+      sorted.sort((a, b) => {
+        if (Boolean(a.proMember) !== Boolean(b.proMember)) {
+          return a.proMember ? -1 : 1;
+        }
+        return b.match - a.match;
+      });
+    } else if (sortBy === "match-asc") sorted.sort((a, b) => a.match - b.match);
     else if (sortBy === "title-asc") sorted.sort((a, b) => a.title.localeCompare(b.title));
     else if (sortBy === "title-desc") sorted.sort((a, b) => b.title.localeCompare(a.title));
 
     return sorted;
   }, [items, tracaoActive, type, query, sortBy]);
+
+  const { visible: displayList, hiddenCount, isFree } = useMemo(() => {
+    return applyFreeTierFilter(
+      list,
+      (it) => it.match ?? 0,
+      3,
+      (it, newScore) => ({ ...it, match: newScore, matchScore: newScore })
+    );
+  }, [list, proActive]);
 
   const sortLabels: Record<SortOption, string> = {
     "match-desc": "Maior match",
@@ -347,13 +370,16 @@ export function Opportunities({
       />
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-        <div className="flex items-center gap-2 text-xs text-[#111827]">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[#111827]">
           <Sparkles size={15} className="text-[#FEC908]" />
           <span>
             Estágio ativo: <strong>{tracaoActive ? "Tração" : "Validação"}</strong> —{" "}
             {tracaoActive
               ? "exibindo Compras Corporativas (sem POCs), Editais e Eventos"
               : "exibindo POCs, Primeira Compra, Editais e Eventos"}
+          </span>
+          <span className="rounded-md bg-[#111827] px-2.5 py-0.5 text-[10px] font-bold text-[#f5c800]">
+            {proActive ? "Plano Pro" : "Plano Free"}
           </span>
         </div>
         <button
@@ -465,19 +491,34 @@ export function Opportunities({
         )}
       </div>
 
-      {list.length ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {list.map((item) => (
-            <OpportunityCard
-              key={item.id}
-              item={item}
-              onSelect={(opp) => {
-                onSelectOpportunity(opp);
-                go("opportunity");
-              }}
+      {displayList.length ? (
+        <>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {displayList.map((item) => (
+              <OpportunityCard
+                key={item.id}
+                item={item}
+                onSelect={(opp) => {
+                  onSelectOpportunity(opp);
+                  go("opportunity");
+                }}
+              />
+            ))}
+          </div>
+          {isFree && (
+            <VerMaisProBanner
+              hiddenCount={hiddenCount}
+              contextLabel={
+                tracaoActive
+                  ? "oportunidades de Compras Corporativas, Editais e Eventos"
+                  : "oportunidades de POC, Primeira Compra, Editais e Eventos"
+              }
+              profileType="STARTUP"
+              isTraction={tracaoActive}
+              onUpgraded={() => setPlanVersion((v) => v + 1)}
             />
-          ))}
-        </div>
+          )}
+        </>
       ) : (
         <div className="mt-6 rounded-2xl border border-dashed border-[#d9e0e5] bg-white py-16 text-center">
           <Sparkles className="mx-auto text-[#FEC908]" size={30} fill="currentColor" />
@@ -553,21 +594,25 @@ export function OpportunityDetail({
           .catch(() => {});
       }
 
-      const savedLocally = getLocalSavedOpportunities(startupId).some(
+      const effectiveStartupId = startupId ?? getSession()?.startupProfileId;
+      const savedLocally = getLocalSavedOpportunities(effectiveStartupId).some(
         (x) =>
           String(x.id) === String(selectedOpportunity.id) ||
           x.title === selectedOpportunity.title
       );
       setJoined(savedLocally);
       api
-        .getMatches(startupId)
+        .getMatches(effectiveStartupId)
         .then((matches) => {
           const found = matches.find(
             (m) =>
-              String(m.opportunityId) === String(selectedOpportunity.id) ||
-              (m.opportunityTitle &&
-                selectedOpportunity.title &&
-                m.opportunityTitle.toLowerCase() === selectedOpportunity.title.toLowerCase())
+              (!effectiveStartupId ||
+                !m.startupId ||
+                Number(m.startupId) === Number(effectiveStartupId)) &&
+              (String(m.opportunityId) === String(selectedOpportunity.id) ||
+                (m.opportunityTitle &&
+                  selectedOpportunity.title &&
+                  m.opportunityTitle.toLowerCase() === selectedOpportunity.title.toLowerCase()))
           );
           if (found) {
             setMatchId(found.id);
@@ -886,12 +931,25 @@ export function SavedOpportunities({
 
   const loadSaved = () => {
     setLoading(true);
-    const localItems = getLocalSavedOpportunities(startupId);
+    const s = getSession();
+    const effectiveStartupId = startupId ?? s?.startupProfileId;
+    const localItems = getLocalSavedOpportunities(effectiveStartupId);
+    if (!effectiveStartupId && !s?.userId) {
+      setSavedList(localItems);
+      setLoading(false);
+      return;
+    }
     api
-      .getMatches(startupId)
+      .getMatches(effectiveStartupId)
       .then((matches) => {
         const backendSaved: (OpportunityItem & { matchId?: number })[] = matches
-          .filter((m) => m.status === "INTERESSE_ENVIADO" || m.status === "SALVO")
+          .filter(
+            (m) =>
+              (m.status === "INTERESSE_ENVIADO" || m.status === "SALVO") &&
+              (!effectiveStartupId ||
+                !m.startupId ||
+                Number(m.startupId) === Number(effectiveStartupId))
+          )
           .map((m) => ({
             id: m.opportunityId || m.id,
             matchId: m.id,

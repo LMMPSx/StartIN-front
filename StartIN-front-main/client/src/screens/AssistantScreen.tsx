@@ -10,10 +10,18 @@ import {
   Sparkles,
   X,
 } from "@/icons";
+import { Download, Lock } from "lucide-react";
 import { BackButton, PageTitle } from "@/components/startin/CommonUI";
+import {
+  ProUpgradeModal,
+  exportTemplateAsDocx,
+  exportTemplateAsPdf,
+} from "@/components/startin/PlanComponents";
 import {
   api,
   getSession,
+  isProUser,
+  type CompanyProfileData,
   type OpportunityItem,
   type ServiceProviderData,
   type StartupProfileData,
@@ -40,16 +48,23 @@ export function Assistant({
   onSelectOpportunity?: (opp: OpportunityItem | null) => void;
 }) {
   const isProvider = accountType === "PROVIDER";
-  const session = getSession();
+  const isCompany = accountType === "COMPANY";
+  const [sessionState, setSessionState] = useState(() => getSession());
+  const session = sessionState;
+  const proUnlocked = isProUser(session);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const [resolvedProvider, setResolvedProvider] = useState<ServiceProviderData | null>(
     providerProfile || null
   );
+  const [resolvedCompany, setResolvedCompany] = useState<CompanyProfileData | null>(null);
   const [activeOpp, setActiveOpp] = useState<OpportunityItem | null>(
     selectedOpportunity || null
   );
   const [availableOpps, setAvailableOpps] = useState<OpportunityItem[]>([]);
   const [messages, setMessages] = useState<{ from: "ai" | "me"; text: string }[]>([]);
   const [input, setInput] = useState("");
+  const [templateStyle, setTemplateStyle] = useState("padrão");
   const [loading, setLoading] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
@@ -70,8 +85,15 @@ export function Assistant({
           if (p) setResolvedProvider(p);
         })
         .catch(() => {});
+    } else if (isCompany && session?.userId) {
+      api
+        .getCompanyByUser(session.userId)
+        .then((c) => {
+          if (c) setResolvedCompany(c);
+        })
+        .catch(() => {});
     }
-  }, [isProvider, providerProfile, session?.userId]);
+  }, [isProvider, isCompany, providerProfile, session?.userId]);
 
   // Sincroniza oportunidade pré-selecionada (ex: vinda da aba Salvos)
   useEffect(() => {
@@ -122,10 +144,21 @@ export function Assistant({
       return;
     }
 
-    const targetId = profile?.id || startupId;
+    if (isCompany) {
+      const compId = resolvedCompany?.id || session?.companyId;
+      api
+        .getOpportunities(undefined, undefined, compId)
+        .then((opps) => {
+          setAvailableOpps(Array.isArray(opps) ? opps : []);
+        })
+        .catch(() => setAvailableOpps([]));
+      return;
+    }
+
+    const targetId = profile?.id || startupId || session?.startupProfileId;
     const localSaved = getLocalSavedOpportunities(targetId);
     Promise.all([
-      api.getMatches(targetId).catch(() => []),
+      targetId || session?.userId ? api.getMatches(targetId).catch(() => []) : Promise.resolve([]),
       api.getOpportunities().catch(() => []),
     ]).then(([matches, allOpps]) => {
       const oppCatalogByTitle = new Map<string, OpportunityItem>();
@@ -136,7 +169,11 @@ export function Assistant({
       });
 
       const savedFromMatches: OpportunityItem[] = matches
-        .filter((m) => m.status === "INTERESSE_ENVIADO" || m.status === "SALVO")
+        .filter(
+          (m) =>
+            (m.status === "INTERESSE_ENVIADO" || m.status === "SALVO") &&
+            (!targetId || !m.startupId || Number(m.startupId) === Number(targetId))
+        )
         .map((m) => {
           const catalogItem =
             (m.opportunityId ? oppCatalogById.get(String(m.opportunityId)) : undefined) ||
@@ -302,12 +339,15 @@ export function Assistant({
     const payloadAttachmentText = attachmentText;
 
     try {
-      const targetStartupId = isProvider ? undefined : profile?.id || startupId;
+      const targetStartupId = isProvider || isCompany ? undefined : profile?.id || startupId;
+      const effectiveStyle = (templateStyle || "padrão").trim() || "padrão";
       const res = await api.chatAI(nextMessages, targetStartupId, {
-        accountType: isProvider ? "PROVIDER" : "STARTUP",
+        accountType: isProvider ? "PROVIDER" : isCompany ? "COMPANY" : "STARTUP",
         providerId: isProvider ? resolvedProvider?.id || session?.providerId : undefined,
         userId: session?.userId,
         provider: isProvider ? resolvedProvider : undefined,
+        company: isCompany ? resolvedCompany : undefined,
+        templateStyle: effectiveStyle,
         selectedOpportunity: activeOpp
           ? {
               id: activeOpp.id,
@@ -344,6 +384,102 @@ export function Assistant({
     setTimeout(() => setCopiedIdx(null), 2200);
   };
 
+  const isTemplateResponse = (aiText: string, msgIndex: number, prevUserText?: string): boolean => {
+    if (msgIndex === 0) return false;
+    const normalize = (s: string) =>
+      String(s || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+
+    const aiNorm = normalize(aiText);
+    const userNorm = normalize(prevUserText || "");
+
+    if (!aiNorm) return false;
+    if (
+      aiNorm.startsWith("nao foi possivel consultar") ||
+      aiNorm.startsWith("ola! sou o assistente") ||
+      aiNorm.startsWith("sou o assistente") ||
+      aiNorm.startsWith("oportunidade salva em foco:") ||
+      aiNorm.startsWith("demanda de trabalho salva em foco:") ||
+      aiNorm.includes("atuo exclusivamente em temas ligados a plataforma startin")
+    ) {
+      return false;
+    }
+
+    const explicitTemplateTriggers = [
+      "template",
+      "proposta comercial",
+      "proposta tecnica",
+      "proposta",
+      "plano de trabalho",
+      "minuta",
+      "termo de referencia",
+      "roteiro de avaliacao",
+      "roteiro",
+      "mensagem executiva",
+      "mensagem persuasiva",
+      "mensagem de abordagem",
+      "abordagem inicial",
+      "texto persuasivo",
+      "texto de merito",
+      "escopo de entregaveis",
+      "modelo de contrato",
+      "analise o documento anexado e monte",
+      "redigir",
+      "escrever proposta",
+      "gerar proposta",
+      "criar mensagem",
+      "gerar template",
+    ];
+
+    const userAskedForTemplate =
+      userNorm === "padrao" ||
+      explicitTemplateTriggers.some((kw) => userNorm.includes(kw));
+
+    const generalQuestionPatterns = [
+      "como funciona",
+      "o que e",
+      "qual o prazo",
+      "quais os documentos",
+      "como otimizar",
+      "avaliar",
+      "dicas",
+      "explique",
+      "resuma",
+      "quem e voce",
+      "qual a diferenca",
+      "como melhorar",
+      "quais sao",
+    ];
+
+    if (!userAskedForTemplate && generalQuestionPatterns.some((kw) => userNorm.includes(kw))) {
+      return false;
+    }
+
+    const aiTemplateHeaders = [
+      "template de",
+      "proposta comercial",
+      "proposta tecnica",
+      "plano de trabalho",
+      "texto de merito",
+      "mensagem de abordagem",
+      "assunto:",
+      "termo de referencia",
+      "roteiro de avaliacao",
+      "estilo de template aplicado:",
+      "1. identificacao",
+      "1. apresentacao",
+      "1. diagnostico",
+      "1. objetivo",
+      "1. escopo",
+      "1. tese de inovacao",
+    ];
+
+    return userAskedForTemplate || aiTemplateHeaders.some((hdr) => aiNorm.includes(hdr));
+  };
+
   const templateQuickPrompts = isProvider
     ? [
         "Gerar proposta comercial e técnica personalizada para atender uma startup em Tração",
@@ -351,16 +487,89 @@ export function Assistant({
         "Sugerir escopo de entregáveis, cronograma de sprints e modelo de contrato PJ/Squad",
         "Como otimizar meu perfil e portfólio para aumentar meu índice de match com startups?",
       ]
-    : [
-        "Gerar template completo de submissão pronto para preencher e enviar",
-        "Escrever proposta técnica detalhada e plano de trabalho para esta oportunidade",
-        "Criar texto persuasivo de mérito, diferencial tecnológico e impacto esperado",
-        "Redigir mensagem executiva de apresentação comercial da startup",
-      ];
+    : isCompany
+      ? [
+          "Gerar template completo de chamada de POC / Primeira Compra para startups",
+          "Criar termo de referência técnica e KPIs para contratação de solução inovadora",
+          "Redigir mensagem executiva de convite para startup com alto match",
+          "Estruturar roteiro de avaliação de prova de conceito (POC) em 90 dias",
+        ]
+      : [
+          "Gerar template completo de submissão pronto para preencher e enviar",
+          "Escrever proposta técnica detalhada e plano de trabalho para esta oportunidade",
+          "Criar texto persuasivo de mérito, diferencial tecnológico e impacto esperado",
+          "Redigir mensagem executiva de apresentação comercial da startup",
+        ];
 
   const actorDisplayName = isProvider
     ? resolvedProvider?.name || session?.name || "seu perfil de prestador"
-    : profile?.name || "sua startup";
+    : isCompany
+      ? resolvedCompany?.name || session?.name || "sua empresa"
+      : profile?.name || "sua startup";
+
+  // Bloqueio do Chatbot para contas do Plano Free em todos os perfis
+  if (!proUnlocked) {
+    return (
+      <>
+        <BackButton label="Voltar para Home" onClick={() => go("dashboard")} />
+        <PageTitle
+          title="Assistente IA — Exclusivo Plano Pro"
+          description="O acesso ao Chatbot gerador de templates personalizados com exportação em PDF e DOCX é exclusivo para assinantes do Plano Pro em todos os perfis."
+        />
+
+        <div className="mt-8 rounded-3xl border-2 border-[#f5c800] bg-[#111827] p-8 text-white shadow-xl md:p-10">
+          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#f5c800] px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-black">
+                <Lock size={13} /> Recurso Exclusivo Plano Pro · R$ 30,00/mês
+              </div>
+              <h2 className="mt-4 font-['Poppins'] text-2xl font-bold text-white md:text-3xl">
+                Desbloqueie o Assistente IA com Definição de Template e Exportação em PDF e DOCX
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-gray-300">
+                No Plano Free, o acesso ao Chatbot Assistente IA está desativado. Ao assinar o Plano Pro (R$ 30,00/mês), você libera imediatamente:
+              </p>
+              <ul className="mt-4 space-y-2 text-xs text-gray-200">
+                <li className="flex items-center gap-2">
+                  <Check size={14} className="text-[#f5c800]" />
+                  <span>Definição de estilo de template personalizado ou geração no formato padrão da IA</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={14} className="text-[#f5c800]" />
+                  <span>Exportação imediata de qualquer template ou proposta em PDF e DOCX</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={14} className="text-[#f5c800]" />
+                  <span>Acesso a 100% dos melhores matches, RAG diário às 08h da manhã e selo Pro Member</span>
+                </li>
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowUpgradeModal(true)}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#f5c800] px-6 py-4 text-xs font-extrabold text-black shadow-lg transition hover:bg-[#eab308]"
+            >
+              Assinar Plano Pro — R$ 30/mês
+              <ArrowRight size={15} />
+            </button>
+          </div>
+        </div>
+
+        {showUpgradeModal && (
+          <ProUpgradeModal
+            onClose={() => setShowUpgradeModal(false)}
+            profileType={accountType}
+            isTraction={Boolean(profile?.currentStage?.toLowerCase().includes("tra"))}
+            onUpgraded={() => {
+              setShowUpgradeModal(false);
+              setSessionState(getSession());
+            }}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -510,9 +719,9 @@ export function Assistant({
           </div>
         </aside>
 
-        {/* Painel Direito: Chat de Geração de Templates + Upload */}
-        <section className="flex h-[540px] max-h-[540px] flex-col overflow-hidden rounded-2xl border border-[#e1e6ea] bg-white">
-          <div className="shrink-0 border-b border-[#edf0f2] px-5 py-4">
+        {/* Painel Direito: Chat de Geração de Templates + Definição de Template + Exportação PDF/DOCX */}
+        <section className="flex h-[600px] max-h-[600px] flex-col overflow-hidden rounded-2xl border border-[#e1e6ea] bg-white">
+          <div className="shrink-0 border-b border-[#edf0f2] px-5 py-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#111827] text-[#FEC908]">
@@ -520,14 +729,16 @@ export function Assistant({
                 </div>
                 <div>
                   <p className="text-sm font-extrabold text-[#111827]">
-                    {isProvider ? "STARTIN IA · PRESTADORES" : "STARTIN IA · TEMPLATES"}
+                    {isProvider
+                      ? "STARTIN IA · PRESTADORES (PRO)"
+                      : isCompany
+                        ? "STARTIN IA · EMPRESAS (PRO)"
+                        : "STARTIN IA · TEMPLATES (PRO)"}
                   </p>
                   <p className="text-[10.5px] text-[#7a8793]">
                     {activeOpp
                       ? `Foco ativo: ${activeOpp.title}`
-                      : isProvider
-                      ? "Pronta para estruturar propostas, escopos técnicos, precificação e conexões com startups"
-                      : "Pronta para estruturar templates de editais, POCs e compras"}
+                      : "Defina o estilo do template abaixo (ou digite 'padrão') e exporte em PDF ou DOCX"}
                   </p>
                 </div>
               </div>
@@ -538,6 +749,42 @@ export function Assistant({
                 </span>
               )}
             </div>
+
+            {/* Barra de Definição de Estilo de Template (Personalizado ou 'padrão') */}
+            <div className="mt-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-2.5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <span className="shrink-0 text-[10.5px] font-extrabold uppercase tracking-wider text-[#111827]">
+                  Definição de Template:
+                </span>
+                <input
+                  type="text"
+                  value={templateStyle}
+                  onChange={(e) => setTemplateStyle(e.target.value)}
+                  placeholder="Digite o estilo/estrutura do template ou digite 'padrão'..."
+                  className="h-8 flex-1 rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-900 outline-none focus:border-[#111827]"
+                />
+                <div className="flex flex-wrap items-center gap-1">
+                  {[
+                    { label: "Padrão", value: "padrão" },
+                    { label: "Executivo (3 blocos)", value: "Executivo objetivo em 3 blocos: Diagnóstico, Solução e ROI" },
+                    { label: "Técnico + Sprints", value: "Técnico detalhado com Arquitetura, Cronograma de Sprints e Entregáveis" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setTemplateStyle(preset.value)}
+                      className={`rounded-md px-2 py-1 text-[10px] font-bold transition ${
+                        templateStyle.toLowerCase() === preset.value.toLowerCase()
+                          ? "bg-[#111827] text-[#f5c800]"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div
@@ -547,7 +794,7 @@ export function Assistant({
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.from === "me" ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[86%] break-words rounded-2xl px-4 py-3.5 text-xs leading-6 ${
+                  className={`max-w-[88%] break-words rounded-2xl px-4 py-3.5 text-xs leading-6 ${
                     m.from === "me"
                       ? "rounded-br-sm bg-[#111827] text-white whitespace-pre-line"
                       : "rounded-bl-sm border border-[#e3eaf0] bg-[#f6f9fc] text-[#1e3a56] whitespace-pre-line"
@@ -555,7 +802,39 @@ export function Assistant({
                 >
                   <div>{m.from === "ai" ? stripMarkdownToPlainText(m.text) : m.text}</div>
                   {m.from === "ai" && i > 0 && (
-                    <div className="mt-3 flex justify-end border-t border-[#e2e8f0] pt-2">
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5 border-t border-[#e2e8f0] pt-2">
+                      {isTemplateResponse(m.text, i, messages[i - 1]?.text) && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              exportTemplateAsPdf(
+                                stripMarkdownToPlainText(m.text),
+                                activeOpp?.title || `Template ${actorDisplayName}`,
+                                templateStyle || "padrão"
+                              )
+                            }
+                            className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-[10.5px] font-bold text-[#111827] shadow-2xs transition hover:bg-gray-100"
+                            title="Exportar este template em formato PDF"
+                          >
+                            <Download size={11} /> Exportar PDF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              exportTemplateAsDocx(
+                                stripMarkdownToPlainText(m.text),
+                                activeOpp?.title || `Template ${actorDisplayName}`,
+                                templateStyle || "padrão"
+                              )
+                            }
+                            className="inline-flex items-center gap-1 rounded-md bg-[#111827] px-2.5 py-1 text-[10.5px] font-bold text-[#f5c800] shadow-2xs transition hover:bg-black"
+                            title="Exportar este template em formato DOCX (Word)"
+                          >
+                            <Download size={11} /> Exportar DOCX
+                          </button>
+                        </>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleCopy(stripMarkdownToPlainText(m.text), i)}

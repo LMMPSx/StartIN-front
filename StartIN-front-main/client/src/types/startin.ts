@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from "@/icons";
 
-export type AccountType = "STARTUP" | "COMPANY" | "PROVIDER";
+export type AccountType = "STARTUP" | "COMPANY" | "PROVIDER" | "ADMIN";
 
 export type Screen =
   | "landing"
@@ -23,6 +23,7 @@ export type Screen =
   | "verify"
   | "onboarding"
   | "dashboard"
+  | "admin"
   | "for-you"
   | "explore"
   | "search-companies"
@@ -99,6 +100,11 @@ export const NAV_ITEMS_COMPANY = [
   { id: "search-startups", label: "Buscar startups", icon: Rocket },
   { id: "my-opportunities", label: "Lançar oportunidades", icon: FileText },
   { id: "create-opportunity", label: "Nova POC / Compra", icon: FilePlus2 },
+  { id: "assistant", label: "Assistente IA", icon: Bot },
+] as const;
+
+export const NAV_ITEMS_ADMIN = [
+  { id: "admin", label: "Moderação & Controle", icon: Sparkles },
 ] as const;
 
 export const NAV_ITEMS_PROVIDER = [

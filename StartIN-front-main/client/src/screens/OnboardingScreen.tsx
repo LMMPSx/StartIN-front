@@ -372,7 +372,11 @@ export function Onboarding({
 
   useEffect(() => {
     const idToLoad = startupId || session?.startupProfileId;
-    const loader = idToLoad ? api.getProfile(idToLoad) : api.getDefaultProfile();
+    const loader = idToLoad
+      ? api.getProfile(idToLoad)
+      : session?.userId
+      ? api.getProfileByUser(session.userId)
+      : Promise.resolve(null);
     loader
       .then((p) => {
         if (p) {
@@ -769,9 +773,10 @@ export function Onboarding({
     }
     if (!canAdvanceStartupStep()) return;
 
-    const targetId = form.id || startupId || session?.startupProfileId || 1;
+    const targetId = form.id || startupId || session?.startupProfileId || 0;
     const payloadToSave: Partial<StartupProfileData> = {
       ...form,
+      userId: session?.userId,
       name: form.name.trim() || session?.name || "Nexa Health",
       cnpj: form.cnpj || session?.cnpj || "",
       phone: form.phone || session?.phone || "",

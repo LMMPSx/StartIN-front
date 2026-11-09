@@ -30,8 +30,16 @@ import {
   TextAreaField,
 } from "@/components/startin/CommonUI";
 import {
+  ProMemberBadge,
+  ProUpgradeModal,
+  VerMaisProBanner,
+  VerifiedProBadge,
+} from "@/components/startin/PlanComponents";
+import {
   api,
+  applyFreeTierFilter,
   getSession,
+  isProUser,
   saveSession,
   type CompanyMatchItem,
   type CompanyProfileData,
@@ -157,10 +165,16 @@ export function MyOpportunities({
             </div>
           ))}
         </div>
-        <div className="mt-8 flex items-center justify-between">
-          <h2 className="text-sm font-extrabold text-[#123b62]">
-            POCs e Compras lançadas pela empresa
-          </h2>
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-extrabold text-[#123b62]">
+              POCs e Compras lançadas pela empresa
+            </h2>
+            <span className="rounded-md bg-gray-100 px-2.5 py-0.5 text-[10.5px] font-bold text-gray-700">
+              Limite mensal: {opps.length} / 10 oportunidades no mês
+            </span>
+            {isProUser(session) && <ProMemberBadge />}
+          </div>
           <span className="text-[11px] text-[#7c8993]">Clique em um item para editar</span>
         </div>
         <div className="mt-4 space-y-3">
@@ -201,6 +215,7 @@ export function MyOpportunities({
                           ? "Em análise"
                           : "Publicada"}
                       </span>
+                      {(o.proMember || isProUser(session)) && <ProMemberBadge />}
                       <p className="text-sm font-extrabold text-[#111827] break-words [overflow-wrap:anywhere]">
                         {o.title}
                       </p>
@@ -290,10 +305,45 @@ export function CreateForm({
     return ["IA", "SaaS", "B2B", "Dados"];
   });
   const [saving, setSaving] = useState(false);
+  const [enhancingOpp, setEnhancingOpp] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
   const [authError, setAuthError] = useState("");
-  const session = getSession();
+  const [sessionState, setSessionState] = useState(() => getSession());
+  const session = sessionState;
+  const proCompany = isProUser(session);
   const effectiveCompanyId = companyId ?? session?.companyId;
   const effectiveCompanyName = companyName ?? session?.name;
+
+  const handleEnhanceOpportunityWithAI = async () => {
+    if (!proCompany) {
+      setShowProModal(true);
+      return;
+    }
+    if (!description || description.trim().length < 8) {
+      setAuthError("Escreva um rascunho da oportunidade antes de melhorar o texto com a IA.");
+      return;
+    }
+    setEnhancingOpp(true);
+    setAuthError("");
+    try {
+      const res = await api.enhanceCompanyDemandsAI({
+        text: description,
+        sector: selectedTags.join(", "),
+        companyName: effectiveCompanyName || "Empresa Parceira",
+        operationMode: selectedType,
+      });
+      if (res.enhancedText) {
+        setDescription(res.enhancedText);
+      }
+      if (Array.isArray(res.tags) && res.tags.length > 0) {
+        setSelectedTags(Array.from(new Set([...selectedTags, ...res.tags])).slice(0, 8));
+      }
+    } catch (e: any) {
+      setAuthError(e?.message || "Não foi possível melhorar o texto com a IA.");
+    } finally {
+      setEnhancingOpp(false);
+    }
+  };
 
   // Verificação de permissão: impede que uma empresa edite oportunidades criadas por outra
   const isUnauthorized = Boolean(
@@ -523,10 +573,61 @@ export function CreateForm({
             />
           </div>
           <div className="md:col-span-2">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-gray-800">
+                  Limite de lançamento: até 10 oportunidades por mês
+                </span>
+                {proCompany ? (
+                  <>
+                    <ProMemberBadge />
+                    <span className="text-[11px] font-semibold text-emerald-700">
+                      Impulsionamento ativo: sua oportunidade ficará na frente com o selo pro member
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[11px] text-gray-500">
+                    Plano Free: menor visibilidade nas listagens e sem melhoria de texto por IA
+                  </span>
+                )}
+              </div>
+              {!proCompany && (
+                <button
+                  type="button"
+                  onClick={() => setShowProModal(true)}
+                  className="text-[11px] font-extrabold text-[#111827] underline"
+                >
+                  Impulsionar com Plano Pro
+                </button>
+              )}
+            </div>
+
             <label className="block">
-              <span className="mb-2 block text-xs font-semibold text-[#203754]">
-                Descrição da oportunidade e escopo técnico
-              </span>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-[#203754]">
+                  Descrição da oportunidade e escopo técnico
+                </span>
+                {proCompany ? (
+                  <button
+                    type="button"
+                    disabled={enhancingOpp}
+                    onClick={handleEnhanceOpportunityWithAI}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#111827] px-3 py-1.5 text-[11px] font-extrabold text-[#f5c800] transition hover:bg-black disabled:opacity-50"
+                  >
+                    <Sparkles size={12} />
+                    {enhancingOpp ? "Melhorando texto com IA..." : "Melhorar texto com a IA"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowProModal(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-gray-100 px-3 py-1.5 text-[11px] font-bold text-gray-500 transition hover:bg-gray-200"
+                    title="Disponível apenas no Plano Pro"
+                  >
+                    Melhorar com IA (Exclusivo Plano Pro)
+                  </button>
+                )}
+              </div>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -569,6 +670,16 @@ export function CreateForm({
           </PrimaryButton>
         </div>
       </section>
+      {showProModal && (
+        <ProUpgradeModal
+          onClose={() => setShowProModal(false)}
+          profileType="COMPANY"
+          onUpgraded={() => {
+            setShowProModal(false);
+            setSessionState(getSession());
+          }}
+        />
+      )}
     </>
   );
 }
@@ -595,8 +706,10 @@ export function SearchStartupsScreen({
   const [selectedStage, setSelectedStage] = useState<string>("Todos");
   const [minMatch, setMinMatch] = useState<number>(0);
   const [onlyInterested, setOnlyInterested] = useState<boolean>(false);
+  const [, setPlanVersion] = useState(0);
 
   const session = getSession();
+  const proCompany = isProUser(session);
   const activeCompanyId = companyId || session?.companyId;
 
   useEffect(() => {
@@ -669,6 +782,15 @@ export function SearchStartupsScreen({
     "name-asc": "Nome (A–Z)",
     "name-desc": "Nome (Z–A)",
   };
+
+  const { visible: visibleStartups, hiddenCount: hiddenStartupsCount, isFree: isFreeCompany } = useMemo(() => {
+    return applyFreeTierFilter(
+      filtered,
+      (s) => s.matchScore ?? 0,
+      3,
+      (s, newScore) => ({ ...s, matchScore: newScore })
+    );
+  }, [filtered, proCompany]);
 
   const activeFiltersCount =
     (selectedArea !== "Todas" ? 1 : 0) +
@@ -775,9 +897,10 @@ export function SearchStartupsScreen({
         </div>
       </div>
 
-      {filtered.length > 0 ? (
+      {visibleStartups.length > 0 ? (
+        <>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {filtered.map((s) => {
+          {visibleStartups.map((s) => {
             const displayName = s.startupName || s.name || "Startup";
             const rawTags = (s.technologies || s.mainArea || "Inovação, Tecnologia, IA")
               .split(/[,•;/]/)
@@ -892,6 +1015,15 @@ export function SearchStartupsScreen({
             );
           })}
         </div>
+        {isFreeCompany && (
+          <VerMaisProBanner
+            hiddenCount={hiddenStartupsCount}
+            contextLabel="startups compatíveis com as demandas de POC e Compra da sua empresa"
+            profileType="COMPANY"
+            onUpgraded={() => setPlanVersion((v) => v + 1)}
+          />
+        )}
+        </>
       ) : (
         <div className="mt-8 rounded-2xl border border-dashed border-[#d9e0e5] bg-white py-16 text-center">
           <Rocket className="mx-auto text-[#111827]" size={32} />
@@ -1277,8 +1409,10 @@ export function SearchCompaniesScreen({
   const [selectedModality, setSelectedModality] = useState<string>("Todas");
   const [selectedSector, setSelectedSector] = useState<string>("Todos");
   const [minMatch, setMinMatch] = useState<number>(0);
+  const [, setPlanVersion] = useState(0);
 
   const session = getSession();
+  const proStartup = isProUser(session);
   const activeStartupId = startupId || session?.startupProfileId;
 
   useEffect(() => {
@@ -1339,6 +1473,15 @@ export function SearchCompaniesScreen({
     "name-asc": "Nome (A–Z)",
     "name-desc": "Nome (Z–A)",
   };
+
+  const { visible: visibleCompanies, hiddenCount: hiddenCompaniesCount, isFree: isFreeStartup } = useMemo(() => {
+    return applyFreeTierFilter(
+      filtered,
+      (c) => c.matchScore ?? 0,
+      3,
+      (c, newScore) => ({ ...c, matchScore: newScore })
+    );
+  }, [filtered, proStartup]);
 
   const activeFiltersCount =
     (selectedModality !== "Todas" ? 1 : 0) +
@@ -1419,9 +1562,10 @@ export function SearchCompaniesScreen({
         </div>
       </div>
 
-      {filtered.length > 0 ? (
+      {visibleCompanies.length > 0 ? (
+        <>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {filtered.map((c) => {
+          {visibleCompanies.map((c) => {
             const displayName = c.companyName || c.name || "Empresa";
             const rawTags = (c.tags || c.sector || "Corporativo, POC, Inovação")
               .split(/[,•;/]/)
@@ -1512,6 +1656,15 @@ export function SearchCompaniesScreen({
             );
           })}
         </div>
+        {isFreeStartup && (
+          <VerMaisProBanner
+            hiddenCount={hiddenCompaniesCount}
+            contextLabel="empresas e oportunidades de POC/primeira compra compatíveis com a sua startup"
+            profileType="STARTUP"
+            onUpgraded={() => setPlanVersion((v) => v + 1)}
+          />
+        )}
+        </>
       ) : (
         <div className="mt-8 rounded-2xl border border-dashed border-[#d9e0e5] bg-white py-16 text-center">
           <Building2 className="mx-auto text-[#111827]" size={32} />
@@ -1993,6 +2146,8 @@ export function CompanyProfileScreen({
   const [aiEnhanced, setAiEnhanced] = useState(false);
   const [aiExtractedTags, setAiExtractedTags] = useState<string[]>([]);
   const [customTagInput, setCustomTagInput] = useState("");
+  const [showProCompanyModal, setShowProCompanyModal] = useState(false);
+  const proCompanyProfile = isProUser();
 
   const effectiveSector =
     selectedSector === "Outro"
@@ -2123,6 +2278,10 @@ export function CompanyProfileScreen({
   };
 
   const handleEnhanceDemandsWithAI = async () => {
+    if (!proCompanyProfile) {
+      setShowProCompanyModal(true);
+      return;
+    }
     setAiError("");
     if (!form.demands || form.demands.trim().length < 10) {
       setAiError(
@@ -2310,7 +2469,12 @@ export function CompanyProfileScreen({
               />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-[#123b62]">Logotipo / Foto da Empresa</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-extrabold text-[#123b62]">
+                  {form.name || "Logotipo / Foto da Empresa"}
+                </h3>
+                {proCompanyProfile && <VerifiedProBadge size={18} />}
+              </div>
               <p className="mt-1 text-xs text-[#768692]">
                 Exibida nas buscas de startups e na barra superior da plataforma.
               </p>
@@ -2630,6 +2794,13 @@ export function CompanyProfileScreen({
           </PrimaryButton>
         </div>
       </section>
+      {showProCompanyModal && (
+        <ProUpgradeModal
+          onClose={() => setShowProCompanyModal(false)}
+          profileType="COMPANY"
+          onUpgraded={() => setShowProCompanyModal(false)}
+        />
+      )}
     </>
   );
 }

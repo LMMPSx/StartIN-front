@@ -19,6 +19,7 @@ import {
   Target,
   TrendingUp,
   Users,
+  X,
   Zap,
 } from "@/icons";
 import type { AccountType, Screen } from "@/types/startin";
@@ -64,6 +65,9 @@ export function LandingScreen({
               </a>
               <a href="#vitrine" className="transition hover:text-[#111827]">
                 Vitrine de Oportunidades
+              </a>
+              <a href="#planos" className="transition hover:text-[#111827]">
+                Planos & Assinatura
               </a>
             </nav>
           </div>
@@ -577,6 +581,226 @@ export function LandingScreen({
               <div className="mt-5 border-t border-white/10 pt-3 text-[11px] text-gray-400">
                 Recife, PE · Presencial · Porto Digital
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================================
+          PLANOS E ASSINATURAS — FREE vs PRO (DOIS BLOCOS LADO A LADO COM V e X)
+      ===================================================================== */}
+      <section id="planos" className="border-t border-white/10 bg-[#111827] py-20">
+        <div className="mx-auto max-w-[1240px] px-5 md:px-8">
+          <div className="mx-auto max-w-[760px] text-center">
+            <span className="text-xs font-extrabold uppercase tracking-[.18em] text-[#FEC908]">
+              Planos & Assinaturas
+            </span>
+            <h2 className="mt-3 text-[32px] font-black leading-tight tracking-[-.04em] text-white md:text-[42px]">
+              Compare o Plano Free e o Plano Pro
+            </h2>
+            <p className="mt-3 text-sm text-gray-300">
+              Uma assinatura única e transparente de <strong className="text-[#FEC908]">R$ 30,00 por mês</strong>, válida para todos os perfis da plataforma (Startups em Validação, Startups em Tração, Empresas Contratantes e Prestadores de Serviços).
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-8 lg:grid-cols-2">
+            {/* BLOCO 1: PLANO FREE */}
+            <div className="flex flex-col justify-between rounded-3xl border border-white/15 bg-white/[0.04] p-7 md:p-9">
+              <div>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-gray-300">
+                      Nível Inicial
+                    </span>
+                    <h3 className="mt-3 text-2xl font-black text-white">Plano Free (Freemium)</h3>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-black text-white">R$ 0</div>
+                    <div className="text-[11px] font-semibold text-gray-400">por mês · Todos os perfis</div>
+                  </div>
+                </div>
+
+                <p className="mt-3 text-xs leading-5 text-gray-400">
+                  Ideal para conhecer a plataforma, cadastrar seu perfil e visualizar uma amostra inicial de conexões e oportunidades.
+                </p>
+
+                <div className="mt-7 space-y-3.5 border-t border-white/10 pt-6 text-xs">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-gray-200">
+                      <strong>Cadastro completo do perfil</strong> com ajuda da IA do StartIn.
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-gray-200">
+                      <strong>Até 10 oportunidades lançadas por mês</strong> para Empresas e Startups em Tração.
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-gray-200">
+                      <strong>Limite de conexões e oportunidades</strong> de editais, POCs e primeira compra visíveis.
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-gray-200">
+                      <strong>Atualização semanal</strong> (apenas uma vez por semana às 08:00 da manhã).
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-400">
+                      <X size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-gray-400">
+                      <strong>Sem acesso ao Chat da StartIn.</strong>
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-400">
+                      <X size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-gray-400">
+                      <strong>Sem opção de melhorar texto com IA</strong> ao lançar oportunidades para prestadores ou startups.
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-400">
+                      <X size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-gray-400">
+                      <strong>Menor visibilidade nas oportunidades lançadas.</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleStartSignup("STARTUP")}
+                className="mt-8 w-full rounded-xl border border-white/20 bg-white/10 py-3.5 text-xs font-extrabold text-white transition hover:bg-white/20"
+              >
+                Começar no Plano Free
+              </button>
+            </div>
+
+            {/* BLOCO 2: PLANO PRO (R$ 30/MÊS) */}
+            <div className="relative flex flex-col justify-between rounded-3xl border-2 border-[#FEC908] bg-gradient-to-b from-[#1a2438] to-[#0f172a] p-7 md:p-9 shadow-2xl">
+              <div>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEC908] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#111827]">
+                      <Sparkles size={11} /> Mais Vantajoso · Todos os Perfis
+                    </span>
+                    <h3 className="mt-3 text-2xl font-black text-white">Plano Pro (Premium)</h3>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-black text-[#FEC908]">R$ 30</div>
+                    <div className="text-[11px] font-semibold text-gray-300">por mês · Válido p/ todos os perfis</div>
+                  </div>
+                </div>
+
+                <p className="mt-3 text-xs leading-5 text-gray-300">
+                  Desbloqueie o poder total da IA, receba 100% das oportunidades mais assertivas, impulsione suas demandas com o selo Pro Member e exporte propostas em PDF e DOCX.
+                </p>
+
+                <div className="mt-7 space-y-3.5 border-t border-white/15 pt-6 text-xs">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FEC908] text-[#111827]">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-white">
+                      <strong>Tudo do Plano Free incluso</strong> + acesso ilimitado às ferramentas de inteligência artificial da plataforma.
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FEC908] text-[#111827]">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-white">
+                      <strong>100% dos melhores matches e oportunidades assertivas.</strong>
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FEC908] text-[#111827]">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-white">
+                      <strong>Acesso completo ao Chat da StartIn.</strong>
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FEC908] text-[#111827]">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-white">
+                      <strong>Criação de templates e materiais profissionais</strong> com apenas um clique pelo Chat da StartIn.
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FEC908] text-[#111827]">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-white">
+                      <strong>Atualização diária às 08:00 da manhã.</strong>
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FEC908] text-[#111827]">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-white">
+                      <strong>Opção &ldquo;Melhorar com a IA&rdquo; liberada</strong> ao lançar oportunidades tanto para Empresas quanto para Startups em Tração.
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FEC908] text-[#111827]">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-white">
+                      <strong>Impulsionamento prioritário de oportunidades e Selo &ldquo;Pro Member&rdquo;</strong> (válido somente para perfis de lançamento de oportunidade).
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FEC908] text-[#111827]">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <span className="text-white">
+                      <strong>Até 10 oportunidades impulsionadas por mês</strong> com destaque visual na vitrine para atrair os melhores parceiros.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleStartSignup("STARTUP")}
+                className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEC908] py-3.5 text-xs font-black text-[#111827] shadow-lg transition hover:bg-[#fed338]"
+              >
+                Assinar Plano Pro por R$ 30/mês <ArrowRight size={15} />
+              </button>
             </div>
           </div>
         </div>

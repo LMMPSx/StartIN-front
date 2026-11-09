@@ -50,7 +50,9 @@ import {
 } from "@/components/startin/CommonUI";
 import {
   api,
+  applyFreeTierFilter,
   getSession,
+  isProUser,
   saveSession,
   type OpportunityItem,
   type ProviderDashboardSummary,
@@ -58,6 +60,12 @@ import {
   type ServiceProviderData,
   type StartupProfileData,
 } from "@/lib/api";
+import {
+  ProMemberBadge,
+  ProUpgradeModal,
+  VerMaisProBanner,
+  VerifiedProBadge,
+} from "@/components/startin/PlanComponents";
 import type { Screen } from "@/types/startin";
 import {
   formatCityStateOnly,
@@ -1177,9 +1185,27 @@ export function ProviderDashboardScreen({
   };
 
   const providerName = summary?.providerName || session?.name || "Prestador";
-  const recommendedList: any[] = Array.isArray(summary?.recommendedStartups)
-    ? summary.recommendedStartups
+  const [planVersion, setPlanVersion] = useState(0);
+  const proProvider = isProUser();
+
+  const rawRecommendedList: any[] = Array.isArray(summary?.recommendedStartups)
+    ? [...summary.recommendedStartups].sort((a, b) => {
+        const aPro = a.proMember ? 1 : 0;
+        const bPro = b.proMember ? 1 : 0;
+        if (bPro !== aPro) return bPro - aPro;
+        return (b.matchScore ?? 0) - (a.matchScore ?? 0);
+      })
     : [];
+
+  const { visible: recommendedList, hiddenCount: hiddenRecommendedCount, isFree: isFreeProvider } = React.useMemo(() => {
+    return applyFreeTierFilter(
+      rawRecommendedList,
+      (st) => st.matchScore ?? 0,
+      3,
+      (st, newScore) => ({ ...st, matchScore: newScore })
+    );
+  }, [rawRecommendedList, proProvider, planVersion]);
+
   const activitiesList: any[] = Array.isArray(summary?.recentActivities)
     ? summary.recentActivities
     : [];
@@ -1189,11 +1215,22 @@ export function ProviderDashboardScreen({
       {/* Top Greeting */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[.18em] text-gray-400">
-            Painel do Prestador de Serviços
-          </span>
-          <h1 className="mt-1 text-3xl font-black tracking-[-.05em] text-[#111827] md:text-4xl">
-            Olá, {providerName}! 👋
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[.18em] text-gray-400">
+              Painel do Prestador de Serviços
+            </span>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
+              proProvider
+                ? "bg-[#111827] text-[#FEC908]"
+                : "bg-gray-200 text-gray-700"
+            }`}>
+              <Sparkles size={10} />
+              {proProvider ? "Plano Pro" : "Plano Free"}
+            </span>
+          </div>
+          <h1 className="mt-1 inline-flex items-center gap-2 text-3xl font-black tracking-[-.05em] text-[#111827] md:text-4xl">
+            <span>Olá, {providerName}!</span>
+            {proProvider && <VerifiedProBadge size={26} />}
           </h1>
           <p className="mt-1.5 text-xs text-gray-600">
             Aqui está o resumo em tempo real das suas conexões e oportunidades com startups em estágio de Tração.
@@ -1366,7 +1403,10 @@ export function ProviderDashboardScreen({
                           </div>
                         )}
                         <div>
-                          <h3 className="text-sm font-extrabold text-[#111827] line-clamp-1">{oppTitle}</h3>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h3 className="text-sm font-extrabold text-[#111827] line-clamp-1">{oppTitle}</h3>
+                            {st.proMember && <ProMemberBadge compact />}
+                          </div>
                           <span className="text-[10px] text-gray-400">
                             {issuerName} · {oppArea} · {stLocation}
                           </span>
@@ -1490,6 +1530,14 @@ export function ProviderDashboardScreen({
             })}
           </div>
         )}
+        {isFreeProvider && recommendedList.length > 0 && (
+          <VerMaisProBanner
+            hiddenCount={hiddenRecommendedCount}
+            contextLabel="oportunidades mais assertivas e conexões com startups em Tração"
+            profileType="PROVIDER"
+            onUpgraded={() => setPlanVersion((v) => v + 1)}
+          />
+        )}
       </div>
 
       {/* Atividades Recentes (100% reais do banco MySQL) */}
@@ -1599,42 +1647,76 @@ export function ExploreStartupsScreen({
     }
   };
 
-  const filtered = startups.filter((st) => {
-    const oppCat = st.targetCategory || st.category || st.mainArea || st.mainSector || "";
-    const matchesArea =
-      filterArea === "Todos" ||
-      oppCat.toLowerCase().includes(filterArea.toLowerCase()) ||
-      (st.startupArea || "").toLowerCase().includes(filterArea.toLowerCase()) ||
-      (st.startupSector || "").toLowerCase().includes(filterArea.toLowerCase());
-    const matchesSearch =
-      !searchQuery.trim() ||
-      (st.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (st.demandTitle || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (st.openDemandTitle || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (st.description || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (st.demand || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (st.tags || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (st.technologies || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (st.startupName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (st.name || "").toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesArea && matchesSearch;
-  });
+  const [planVersion, setPlanVersion] = useState(0);
+  const proProvider = isProUser();
+
+  const filtered = startups
+    .filter((st) => {
+      const oppCat = st.targetCategory || st.category || st.mainArea || st.mainSector || "";
+      const matchesArea =
+        filterArea === "Todos" ||
+        oppCat.toLowerCase().includes(filterArea.toLowerCase()) ||
+        (st.startupArea || "").toLowerCase().includes(filterArea.toLowerCase()) ||
+        (st.startupSector || "").toLowerCase().includes(filterArea.toLowerCase());
+      const matchesSearch =
+        !searchQuery.trim() ||
+        (st.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (st.demandTitle || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (st.openDemandTitle || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (st.description || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (st.demand || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (st.tags || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (st.technologies || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (st.startupName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (st.name || "").toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesArea && matchesSearch;
+    })
+    .sort((a, b) => {
+      const aPro = a.proMember ? 1 : 0;
+      const bPro = b.proMember ? 1 : 0;
+      if (bPro !== aPro) return bPro - aPro;
+      return (b.matchScore ?? 0) - (a.matchScore ?? 0);
+    });
+
+  const { visible: visibleStartups, hiddenCount: hiddenStartupsCount, isFree: isFreeProvider } = React.useMemo(() => {
+    if (onlySaved) {
+      return { visible: filtered, hiddenCount: 0, isFree: false };
+    }
+    return applyFreeTierFilter(
+      filtered,
+      (st) => st.matchScore ?? 0,
+      3,
+      (st, newScore) => ({ ...st, matchScore: newScore })
+    );
+  }, [filtered, onlySaved, proProvider, planVersion]);
 
   return (
     <div className="space-y-6 p-4 md:p-8">
-      <PageTitle
-        eyebrow={
-          onlySaved
-            ? "Favoritos do Prestador · Oportunidades Salvas"
-            : "Recomendações da IA · Oportunidades de Startups em Tração"
-        }
-        title={onlySaved ? "Oportunidades salvas" : "Recomendações"}
-        description={
-          onlySaved
-            ? "Oportunidades de demandas técnicas e trabalhos de startups em estágio de Tração que você salvou para acompanhar e enviar proposta."
-            : "Oportunidades e demandas técnicas lançadas por startups em estágio de Tração recomendadas pela IA conforme o seu perfil e especialidade."
-        }
-      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <PageTitle
+          eyebrow={
+            onlySaved
+              ? "Favoritos do Prestador · Oportunidades Salvas"
+              : "Recomendações da IA · Oportunidades de Startups em Tração"
+          }
+          title={onlySaved ? "Oportunidades salvas" : "Recomendações"}
+          description={
+            onlySaved
+              ? "Oportunidades de demandas técnicas e trabalhos de startups em estágio de Tração que você salvou para acompanhar e enviar proposta."
+              : "Oportunidades e demandas técnicas lançadas por startups em estágio de Tração recomendadas pela IA conforme o seu perfil e especialidade."
+          }
+        />
+        {!onlySaved && (
+          <div className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-black shrink-0 ${
+            proProvider
+              ? "bg-[#111827] text-[#FEC908]"
+              : "bg-gray-100 text-gray-700 border border-gray-200"
+          }`}>
+            <Sparkles size={12} />
+            {proProvider ? "Plano Pro · RAG Diário às 08h" : "Plano Free · RAG Semanal às 08h"}
+          </div>
+        )}
+      </div>
 
       {/* Barra de Filtros e Busca */}
       {onlySaved ? (
@@ -1690,7 +1772,7 @@ export function ExploreStartupsScreen({
             ? "Carregando suas oportunidades e demandas salvas..."
             : "Analisando compatibilidade com oportunidades e demandas técnicas de startups em Tração..."}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : visibleStartups.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-gray-300 bg-white py-16 px-6 text-center space-y-3">
           <p className="text-sm font-extrabold text-[#111827]">
             {onlySaved
@@ -1706,8 +1788,9 @@ export function ExploreStartupsScreen({
           </p>
         </div>
       ) : (
+        <>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {filtered.map((st) => {
+          {visibleStartups.map((st) => {
             const oppId = st.id ?? st.opportunityId;
             const startupId = st.startupId ?? st.id;
             const oppTitle =
@@ -1764,6 +1847,7 @@ export function ExploreStartupsScreen({
                   {/* Topo do card: Badges à esquerda, Match grande + Salvar à direita */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
+                      {st.proMember && <ProMemberBadge />}
                       <span className="rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-[10px] font-extrabold text-blue-700">
                         {oppCategory}
                       </span>
@@ -1904,6 +1988,15 @@ export function ExploreStartupsScreen({
             );
           })}
         </div>
+        {!onlySaved && isFreeProvider && (
+          <VerMaisProBanner
+            hiddenCount={hiddenStartupsCount}
+            contextLabel="oportunidades lançadas por startups em Tração e conexões diretas com startups"
+            profileType="PROVIDER"
+            onUpgraded={() => setPlanVersion((v) => v + 1)}
+          />
+        )}
+        </>
       )}
 
       {/* Modal Real de Contatos Liberados */}
@@ -1964,6 +2057,9 @@ export function ExploreProvidersScreen({
     return base;
   }, [providers]);
 
+  const [planVersion, setPlanVersion] = useState(0);
+  const proStartup = isProUser();
+
   const filtered = providers.filter((p) => {
     const matchesCat =
       filterCategory === "Todos" ||
@@ -1978,13 +2074,32 @@ export function ExploreProvidersScreen({
     return matchesCat && matchesSearch;
   });
 
+  const { visible: visibleProviders, hiddenCount: hiddenProvidersCount, isFree: isFreeStartup } = React.useMemo(() => {
+    return applyFreeTierFilter(
+      filtered,
+      (p) => p.matchScore ?? 0,
+      3,
+      (p, newScore) => ({ ...p, matchScore: newScore })
+    );
+  }, [filtered, proStartup, planVersion]);
+
   return (
     <div className="space-y-6 p-4 md:p-8">
-      <PageTitle
-        eyebrow="Rede de Especialistas & Squads"
-        title="Explorar prestadores de serviços"
-        description="Encontre profissionais autônomos e empresas especializadas avaliados pela IA conforme as necessidades da sua startup."
-      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <PageTitle
+          eyebrow="Rede de Especialistas & Squads"
+          title="Explorar prestadores de serviços"
+          description="Encontre profissionais autônomos e empresas especializadas avaliados pela IA conforme as necessidades da sua startup."
+        />
+        <div className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-black shrink-0 ${
+          proStartup
+            ? "bg-[#111827] text-[#FEC908]"
+            : "bg-gray-100 text-gray-700 border border-gray-200"
+        }`}>
+          <Sparkles size={12} />
+          {proStartup ? "Plano Pro · 100% dos Matches" : "Plano Free · 1 Top Match + 3 Prestadores"}
+        </div>
+      </div>
 
       {/* Filtros em Pills e Busca */}
       <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-xs md:flex-row md:items-center md:justify-between">
@@ -2019,13 +2134,14 @@ export function ExploreProvidersScreen({
       {/* Grid de Prestadores */}
       {loading ? (
         <div className="py-20 text-center text-xs text-gray-400">Carregando prestadores...</div>
-      ) : filtered.length === 0 ? (
+      ) : visibleProviders.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-gray-300 bg-white py-16 px-6 text-center text-xs text-gray-500">
           Nenhum prestador de serviço cadastrado com os filtros selecionados.
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((pr) => {
+          {visibleProviders.map((pr) => {
             const avatar = pr.photoUrl || pr.avatarUrl;
             const skillsList = (pr.toolsAndSkills || pr.tags || "")
               .split(",")
@@ -2181,6 +2297,16 @@ export function ExploreProvidersScreen({
             );
           })}
         </div>
+        {isFreeStartup && (
+          <VerMaisProBanner
+            hiddenCount={hiddenProvidersCount}
+            contextLabel="prestadores de serviço e especialistas compatíveis com a sua startup em Tração"
+            profileType="STARTUP"
+            isTraction={true}
+            onUpgraded={() => setPlanVersion((v) => v + 1)}
+          />
+        )}
+        </>
       )}
 
       {/* Modal Real de Contatos Liberados */}
@@ -3749,6 +3875,9 @@ export function StartupServiceDemandsScreen({
   const startupId = session?.startupProfileId || session?.userId;
   const [demands, setDemands] = useState<OpportunityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [planVersion, setPlanVersion] = useState(0);
+  const proStartup = isProUser();
 
   useEffect(() => {
     async function loadDemands() {
@@ -3766,7 +3895,7 @@ export function StartupServiceDemandsScreen({
       }
     }
     loadDemands();
-  }, [startupId]);
+  }, [startupId, planVersion]);
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -3779,7 +3908,7 @@ export function StartupServiceDemandsScreen({
             Demandas Técnicas para Prestadores
           </h1>
           <p className="mt-1 text-xs text-gray-600">
-            Publique demandas de desenvolvimento, design e squads para prestadores e software houses qualificadas.
+            Publique demandas de desenvolvimento, design e squads para prestadores e software houses qualificadas (limite de até 10 oportunidades por mês).
           </p>
         </div>
 
@@ -3789,6 +3918,38 @@ export function StartupServiceDemandsScreen({
         >
           <Plus size={15} /> Nova Demanda de Serviço
         </button>
+      </div>
+
+      {/* Barra de status de visibilidade e limite mensal */}
+      <div className="flex flex-col justify-between gap-3 rounded-2xl border border-[#dfe5ea] bg-white p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-wrap items-center gap-3">
+          {proStartup ? (
+            <ProMemberBadge />
+          ) : (
+            <span className="rounded-md bg-gray-100 px-2.5 py-1 text-[10px] font-black uppercase text-gray-700">
+              Plano Free · Menor Visibilidade
+            </span>
+          )}
+          <span className="text-xs font-semibold text-[#334155]">
+            {proStartup
+              ? "Suas oportunidades são impulsionadas para a frente da vitrine dos prestadores com o selo Pro Member."
+              : "No Plano Free suas oportunidades têm menos visibilidade e ficam atrás das startups Pro."}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="rounded-lg bg-[#f8fafc] border border-[#e2e8f0] px-3 py-1.5 text-[11px] font-extrabold text-[#111827]">
+            {demands.length} / 10 oportunidades no mês
+          </span>
+          {!proStartup && (
+            <button
+              type="button"
+              onClick={() => setShowUpgradeModal(true)}
+              className="rounded-lg bg-[#111827] px-3.5 py-1.5 text-[11px] font-black text-[#FEC908] transition hover:bg-black"
+            >
+              Impulsionar com Pro (R$ 30/mês)
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -3818,7 +3979,8 @@ export function StartupServiceDemandsScreen({
               className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-xs transition hover:border-[#111827]"
             >
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {(proStartup || d.proMember) && <ProMemberBadge compact />}
                   <span className="rounded-md bg-blue-50 text-blue-700 px-2 py-0.5 text-[9px] font-black uppercase">
                     {d.targetCategory || "Tecnologia"}
                   </span>
@@ -3854,6 +4016,15 @@ export function StartupServiceDemandsScreen({
           ))}
         </div>
       )}
+
+      {showUpgradeModal && (
+        <ProUpgradeModal
+          onClose={() => setShowUpgradeModal(false)}
+          profileType="STARTUP"
+          isTraction={true}
+          onUpgraded={() => setPlanVersion((v) => v + 1)}
+        />
+      )}
     </div>
   );
 }
@@ -3878,7 +4049,44 @@ export function CreateServiceDemandScreen({
   const [tags, setTags] = useState(existingDemand?.tags || "");
   const [meta, setMeta] = useState(existingDemand?.meta || "");
   const [loading, setLoading] = useState(false);
+  const [enhancingAi, setEnhancingAi] = useState(false);
+  const [aiEnhancedNotice, setAiEnhancedNotice] = useState("");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [planVersion, setPlanVersion] = useState(0);
   const [error, setError] = useState("");
+  const proStartup = isProUser();
+
+  const handleEnhanceDemandWithAi = async () => {
+    if (!proStartup) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    const raw = description.trim();
+    if (raw.length < 10) {
+      setError("Escreva ao menos um rascunho breve do escopo antes de melhorar com a IA.");
+      return;
+    }
+    setError("");
+    setEnhancingAi(true);
+    try {
+      const res = await api.enhanceProblemAI({
+        text: raw,
+        area: targetCategory,
+        stage: "Tração",
+      });
+      if (res.enhancedText) {
+        setDescription(res.enhancedText);
+      }
+      if (Array.isArray(res.tags) && res.tags.length > 0 && !tags.trim()) {
+        setTags(res.tags.join(", "));
+      }
+      setAiEnhancedNotice("Escopo aprimorado pela IA e requisitos extraídos automaticamente!");
+    } catch {
+      setError("Não foi possível aprimorar o texto com a IA no momento.");
+    } finally {
+      setEnhancingAi(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3964,12 +4172,53 @@ export function CreateServiceDemandScreen({
             </select>
           </div>
 
-          <TextAreaField
-            label="Escopo Detalhado e Entregáveis"
-            placeholder="Descreva as funcionalidades necessárias, critérios de aceite, arquitetura esperada e prazos..."
-            value={description}
-            onChange={setDescription}
-          />
+          <div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-bold text-[#111827]">
+                Escopo Detalhado e Entregáveis
+              </span>
+              {proStartup ? (
+                <button
+                  type="button"
+                  disabled={enhancingAi}
+                  onClick={handleEnhanceDemandWithAi}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#111827] px-3.5 py-1 text-[11px] font-extrabold text-[#FEC908] transition hover:bg-black disabled:opacity-50"
+                >
+                  <Sparkles size={12} />
+                  {enhancingAi ? "Melhorando com IA..." : "Melhorar texto com a IA (Plano Pro)"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#FEC908] bg-[#fffbeb] px-3.5 py-1 text-[11px] font-extrabold text-[#92400e] transition hover:bg-[#fef3c7]"
+                >
+                  <Sparkles size={12} />
+                  Melhorar com IA bloqueado no Plano Free · Assinar Pro (R$ 30/mês)
+                </button>
+              )}
+            </div>
+            <textarea
+              rows={5}
+              placeholder="Descreva as funcionalidades necessárias, critérios de aceite, arquitetura esperada e prazos..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="startin-textarea text-xs transition"
+            />
+            {aiEnhancedNotice && (
+              <p className="mt-1.5 text-[11px] font-bold text-[#15803d]">
+                {aiEnhancedNotice}
+              </p>
+            )}
+            <div className="mt-2 rounded-xl border border-gray-200 bg-[#f8fafc] p-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-600">
+              <span>
+                {proStartup
+                  ? "Sua demanda receberá o selo Pro Member e será impulsionada na frente para os prestadores."
+                  : "No Plano Free, oportunidades têm menos visibilidade e limite de até 10 oportunidades/mês."}
+              </span>
+              {proStartup && <ProMemberBadge compact />}
+            </div>
+          </div>
 
           <Field
             label="Tecnologias e Competências Requeridas (tags separadas por vírgula)"
@@ -4000,6 +4249,15 @@ export function CreateServiceDemandScreen({
           </div>
         </form>
       </div>
+
+      {showUpgradeModal && (
+        <ProUpgradeModal
+          onClose={() => setShowUpgradeModal(false)}
+          profileType="STARTUP"
+          isTraction={true}
+          onUpgraded={() => setPlanVersion((v) => v + 1)}
+        />
+      )}
     </div>
   );
 }
@@ -4442,7 +4700,12 @@ export function ProviderProfileScreen({
               />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-[#111827]">Foto de Perfil / Logotipo</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-extrabold text-[#111827]">
+                  {form.name || "Foto de Perfil / Logotipo"}
+                </h3>
+                {isProUser() && <VerifiedProBadge size={18} />}
+              </div>
               <p className="mt-1 text-xs text-[#768692]">
                 Exibida para startups em Tração na vitrine de prestadores e na barra superior da plataforma.
               </p>

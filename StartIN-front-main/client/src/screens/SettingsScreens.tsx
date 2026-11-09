@@ -21,10 +21,12 @@ import {
   api,
   clearSession,
   getSession,
+  isProUser,
   saveSession,
   type NotificationItem,
   type StartupProfileData,
 } from "@/lib/api";
+import { ProMemberBadge, ProUpgradeModal, VerifiedProBadge } from "@/components/startin/PlanComponents";
 import type { Screen } from "@/types/startin";
 import {
   formatCityStateOnly,
@@ -67,6 +69,29 @@ export function SettingsPage({
 }) {
   const session = getSession();
   const isCompany = session?.accountType === "COMPANY";
+  const isProvider = session?.accountType === "PROVIDER";
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [planVersion, setPlanVersion] = useState(0);
+  const [switchingPlan, setSwitchingPlan] = useState(false);
+  const proActive = isProUser();
+
+  const handleDowngradeToFree = async () => {
+    setSwitchingPlan(true);
+    try {
+      const current = getSession();
+      if (current?.userId) {
+        await api.updateUser(current.userId, { plan: "FREE" });
+        saveSession({ ...current, plan: "FREE" });
+        setPlanVersion((v) => v + 1);
+        setSavedNotice("Plano alterado para Free.");
+        setTimeout(() => setSavedNotice(""), 3000);
+      }
+    } catch {
+      setSavedNotice("Não foi possível alterar o plano.");
+    } finally {
+      setSwitchingPlan(false);
+    }
+  };
 
   const [quickToggles, setQuickToggles] = useState<[boolean, boolean, boolean]>([
     profile?.receiveAiRecommendations ?? true,
@@ -183,8 +208,65 @@ export function SettingsPage({
       <BackButton label="Voltar para Home" onClick={() => go("dashboard")} />
       <PageTitle
         title="Configurações"
-        description="Gerencie sua conta, preferências e privacidade na StartIn."
+        description="Gerencie sua conta, assinatura, preferências e privacidade na StartIn."
       />
+
+      {/* Bloco de Assinatura e Plano (Free vs Pro R$ 30/mês) */}
+      <div className="mt-6 rounded-2xl border border-[#111827] bg-[#111827] p-6 text-white shadow-md">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                Assinatura e Plano Atual
+              </span>
+              {proActive ? (
+                <ProMemberBadge />
+              ) : (
+                <span className="rounded-md bg-white/10 px-2.5 py-0.5 text-[10px] font-black uppercase text-white">
+                  Plano Free (R$ 0/mês)
+                </span>
+              )}
+            </div>
+            <h2 className="mt-2 text-lg font-extrabold text-white">
+              {proActive
+                ? "Plano Pro Ativo (R$ 30,00/mês)"
+                : "Plano Freemium · Faça upgrade para o Plano Pro por R$ 30,00/mês"}
+            </h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {proActive ? (
+              <button
+                type="button"
+                disabled={switchingPlan}
+                onClick={handleDowngradeToFree}
+                className="rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/20 disabled:opacity-50"
+              >
+                {switchingPlan ? "Alterando..." : "Mudar para Plano Free"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#FEC908] px-5 py-3 text-xs font-black text-[#111827] transition hover:bg-[#e5b507]"
+              >
+                <Sparkles size={14} /> Assinar Plano Pro · R$ 30/mês
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {showUpgradeModal && (
+        <ProUpgradeModal
+          onClose={() => setShowUpgradeModal(false)}
+          profileType={isCompany ? "COMPANY" : isProvider ? "PROVIDER" : "STARTUP"}
+          isTraction={normalizeStageLabel(profile?.currentStage) === "Tração"}
+          onUpgraded={() => {
+            setPlanVersion((v) => v + 1);
+            setSavedNotice("Plano Pro ativado com sucesso!");
+          }}
+        />
+      )}
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {cards.map(([targetScreen, Icon, title, text]) => (
           <button
@@ -1021,8 +1103,9 @@ export function SubSettings({
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
                   Startup Vinculada · Estágio {currentStage}
                 </span>
-                <h3 className="text-base font-extrabold text-[#111827]">
-                  {startupName || "Nexa Health"}
+                <h3 className="inline-flex items-center gap-2 text-base font-extrabold text-[#111827]">
+                  <span>{startupName || "Nexa Health"}</span>
+                  {isProUser() && <VerifiedProBadge size={18} />}
                 </h3>
                 <p className="mt-0.5 text-xs text-gray-600">
                   {[effectiveMainArea, accCnpj ? `CNPJ ${accCnpj}` : "", operationRegion]

@@ -14,11 +14,19 @@ import {
 import { BackButton, PageTitle, PrimaryButton } from "@/components/startin/CommonUI";
 import {
   api,
+  applyFreeTierFilter,
+  isProUser,
   type CompanyDashboardSummary,
   type DashboardSummary,
   type OpportunityItem,
   type StartupMatchItem,
 } from "@/lib/api";
+import {
+  ProMemberBadge,
+  ProUpgradeModal,
+  VerMaisProBanner,
+  VerifiedProBadge,
+} from "@/components/startin/PlanComponents";
 import type { Screen } from "@/types/startin";
 import { formatOppType, getBadgeColorByType, getInitials } from "@/utils/formatters";
 
@@ -34,6 +42,9 @@ export function Dashboard({
   onSelectOpportunityById: (id: string | number) => void;
 }) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [planVersion, setPlanVersion] = useState(0);
+  const proStartup = isProUser();
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +78,7 @@ export function Dashboard({
     };
   }, [startupId]);
 
-  const greeting = summary?.greeting || `Olá, ${startupName || "Nexa Health"} 👋`;
+  const greeting = (summary?.greeting || `Olá, ${startupName || "Nexa Health"}`).replace(/👋/g, "").trim();
   const pendingCount = summary?.pendingActionsCount ?? 4;
   const pendingText =
     summary?.pendingActionsText ||
@@ -128,14 +139,50 @@ export function Dashboard({
   return (
     <>
       <PageTitle
-        title={greeting}
+        eyebrow={
+          <>
+            <span>PAINEL DA STARTUP</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#111827] px-2.5 py-0.5 text-[10px] font-black text-[#FEC908] normal-case tracking-normal">
+              <Sparkles size={11} />
+              {proStartup ? "Plano Pro" : "Plano Free"}
+            </span>
+          </>
+        }
+        title={
+          <span className="inline-flex items-center gap-2">
+            <span>{greeting}</span>
+            {proStartup && <VerifiedProBadge size={24} />}
+          </span>
+        }
         description="Visão geral dos resultados acumulados pela IA e das oportunidades compatíveis com seu estágio."
         action={
-          <PrimaryButton secondary onClick={() => go("notifications")}>
-            Ver atividade
-          </PrimaryButton>
+          <div className="flex flex-wrap items-center gap-2">
+            {proStartup ? (
+              <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#111827] px-3.5 py-2 text-xs font-black text-[#FEC908]">
+                <Sparkles size={13} /> Plano Pro
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#111827] px-3.5 py-2 text-xs font-black text-[#FEC908] transition hover:bg-black"
+              >
+                <Sparkles size={13} /> Plano Free
+              </button>
+            )}
+            <PrimaryButton secondary onClick={() => go("notifications")}>
+              Ver atividade
+            </PrimaryButton>
+          </div>
         }
       />
+      {showUpgradeModal && (
+        <ProUpgradeModal
+          onClose={() => setShowUpgradeModal(false)}
+          profileType="STARTUP"
+          onUpgraded={() => setPlanVersion((v) => v + 1)}
+        />
+      )}
       <div className="mt-8 rounded-2xl bg-[#111827] p-6 text-white md:p-7">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -233,6 +280,9 @@ export function CompanyDashboard({
 }) {
   const [summary, setSummary] = useState<CompanyDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [planVersion, setPlanVersion] = useState(0);
+  const proCompany = isProUser();
 
   useEffect(() => {
     setLoading(true);
@@ -241,9 +291,9 @@ export function CompanyDashboard({
       .then((res) => setSummary(res))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [companyId]);
+  }, [companyId, planVersion]);
 
-  const greeting = summary?.greeting || `Olá, ${companyName || "Empresa Alpha"} 👋`;
+  const greeting = (summary?.greeting || `Olá, ${companyName || "Empresa Alpha"}`).replace(/👋/g, "").trim();
   const bannerTitle =
     summary?.bannerTitle || "Painel de Inovação Aberta & Contratação de Startups";
   const bannerText =
@@ -271,14 +321,50 @@ export function CompanyDashboard({
   return (
     <>
       <PageTitle
-        title={greeting}
+        eyebrow={
+          <>
+            <span>PAINEL DA EMPRESA</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#111827] px-2.5 py-0.5 text-[10px] font-black text-[#FEC908] normal-case tracking-normal">
+              <Sparkles size={11} />
+              {proCompany ? "Plano Pro" : "Plano Free"}
+            </span>
+          </>
+        }
+        title={
+          <span className="inline-flex items-center gap-2">
+            <span>{greeting}</span>
+            {proCompany && <VerifiedProBadge size={24} />}
+          </span>
+        }
         description="Acompanhe suas POCs e Compras lançadas e o histórico de startups com match na plataforma."
         action={
-          <PrimaryButton onClick={() => go("create-opportunity")}>
-            <Plus size={15} /> Nova POC / Compra
-          </PrimaryButton>
+          <div className="flex flex-wrap items-center gap-2">
+            {proCompany ? (
+              <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#111827] px-3.5 py-2 text-xs font-black text-[#FEC908]">
+                <Sparkles size={13} /> Plano Pro
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#111827] px-3.5 py-2 text-xs font-black text-[#FEC908] transition hover:bg-black"
+              >
+                <Sparkles size={13} /> Plano Free
+              </button>
+            )}
+            <PrimaryButton onClick={() => go("create-opportunity")}>
+              <Plus size={15} /> Nova POC / Compra
+            </PrimaryButton>
+          </div>
         }
       />
+      {showUpgradeModal && (
+        <ProUpgradeModal
+          onClose={() => setShowUpgradeModal(false)}
+          profileType="COMPANY"
+          onUpgraded={() => setPlanVersion((v) => v + 1)}
+        />
+      )}
 
       <div className="mt-8 rounded-2xl bg-[#111827] p-6 text-white md:p-7">
         <div className="flex items-center justify-between gap-4">
@@ -470,6 +556,8 @@ export function CompanyMatchesHistoryScreen({
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [onlyInterested, setOnlyInterested] = useState(false);
+  const [planVersion, setPlanVersion] = useState(0);
+  const proCompany = isProUser();
 
   useEffect(() => {
     setLoading(true);
@@ -504,6 +592,15 @@ export function CompanyMatchesHistoryScreen({
       return true;
     });
   }, [history, query, onlyInterested]);
+
+  const { visible: visibleHistory, hiddenCount: hiddenHistoryCount, isFree: isFreeCompany } = useMemo(() => {
+    return applyFreeTierFilter(
+      filtered,
+      (s) => s.matchScore ?? 0,
+      3,
+      (s, newScore) => ({ ...s, matchScore: newScore })
+    );
+  }, [filtered, proCompany, planVersion]);
 
   return (
     <>
@@ -544,8 +641,9 @@ export function CompanyMatchesHistoryScreen({
       <div className="mt-6 space-y-3">
         {loading ? (
           <p className="text-sm text-[#73808b]">Carregando histórico completo de matches...</p>
-        ) : filtered.length > 0 ? (
-          filtered.map((s) => {
+        ) : visibleHistory.length > 0 ? (
+          <>
+          {visibleHistory.map((s) => {
             const stName = s.startupName || s.name || "Startup";
             const interestedOpps = s.interestedOpportunities || [];
             return (
@@ -615,7 +713,16 @@ export function CompanyMatchesHistoryScreen({
                 </div>
               </div>
             );
-          })
+          })}
+          {isFreeCompany && (
+            <VerMaisProBanner
+              hiddenCount={hiddenHistoryCount}
+              contextLabel="startups compatíveis no histórico de matches da sua empresa"
+              profileType="COMPANY"
+              onUpgraded={() => setPlanVersion((v) => v + 1)}
+            />
+          )}
+          </>
         ) : (
           <div className="rounded-2xl border border-dashed border-[#d9e0e5] bg-white py-14 text-center">
             <Rocket className="mx-auto text-[#111827]" size={30} />

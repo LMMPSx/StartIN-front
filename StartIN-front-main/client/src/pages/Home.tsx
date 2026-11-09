@@ -15,6 +15,7 @@ import {
   type StartupProfileData,
 } from "@/lib/api";
 import {
+  AdminScreen,
   Assistant,
   CompanyDashboard,
   CompanyMatchDetailScreen,
@@ -61,7 +62,9 @@ import { computeAuditedClientMatchScore } from "@/utils/formatters";
 export default function Home() {
   const session = getSession();
   const initialAccountType: AccountType =
-    session?.accountType === "PROVIDER"
+    session?.accountType === "ADMIN"
+      ? "ADMIN"
+      : session?.accountType === "PROVIDER"
       ? "PROVIDER"
       : session?.accountType === "COMPANY"
       ? "COMPANY"
@@ -217,7 +220,11 @@ export default function Home() {
     const titles = new Set(localItems.map((i) => i.title.toLowerCase()));
     if (Array.isArray(matchesFromApi)) {
       matchesFromApi
-        .filter((m) => m.status === "INTERESSE_ENVIADO" || m.status === "SALVO")
+        .filter(
+          (m) =>
+            (m.status === "INTERESSE_ENVIADO" || m.status === "SALVO") &&
+            (!resolvedId || !m.startupId || Number(m.startupId) === Number(resolvedId))
+        )
         .forEach((m) => {
           if (m.opportunityTitle) titles.add(m.opportunityTitle.toLowerCase());
         });
@@ -295,7 +302,9 @@ export default function Home() {
   useEffect(() => {
     const currentSession = getSession();
     const currentType: AccountType =
-      currentSession?.accountType === "PROVIDER"
+      currentSession?.accountType === "ADMIN"
+        ? "ADMIN"
+        : currentSession?.accountType === "PROVIDER"
         ? "PROVIDER"
         : currentSession?.accountType === "COMPANY"
         ? "COMPANY"
@@ -307,6 +316,26 @@ export default function Home() {
       setCompanyProfile(null);
       setProviderProfile(null);
       setNotifications([]);
+      setSavedCount(0);
+      return;
+    }
+
+    // Sincroniza plano de assinatura do usuário com o backend
+    if (currentSession?.userId) {
+      api
+        .getUser(currentSession.userId)
+        .then((u) => {
+          if (u && u.plan && u.plan !== currentSession.plan) {
+            saveSession({ ...currentSession, plan: u.plan });
+          }
+        })
+        .catch(() => {});
+    }
+
+    if (currentType === "ADMIN") {
+      setProfile(null);
+      setCompanyProfile(null);
+      setProviderProfile(null);
       setSavedCount(0);
       return;
     }
@@ -361,6 +390,9 @@ export default function Home() {
           .then((p) => {
             if (p) {
               setProfile(p);
+              if (currentSession && !currentSession.startupProfileId && p.id) {
+                saveSession({ ...currentSession, startupProfileId: p.id });
+              }
               refreshNotifications({ startupId: p.id, role: "STARTUP" });
               if (p.id) {
                 api
@@ -784,6 +816,7 @@ export default function Home() {
     );
   }
 
+  const isAdmin = accountType === "ADMIN";
   const isProvider = accountType === "PROVIDER";
   const isCompany = accountType === "COMPANY";
   const isTracao =
@@ -793,7 +826,9 @@ export default function Home() {
       ? false
       : Boolean(profile?.tractionAttested) || Boolean(profile?.trlScore && profile.trlScore >= 7);
 
-  const displayName = isProvider
+  const displayName = isAdmin
+    ? session?.name || "Administrador StartIn"
+    : isProvider
     ? providerProfile?.name || session?.name || "Prestador de Serviços"
     : isCompany
     ? companyProfile?.name || session?.name || "Minha Empresa"
@@ -818,7 +853,9 @@ export default function Home() {
     "edit-service-demand",
   ].includes(screen);
 
-  if (!isProvider && !isCompany && !isTracao && isProviderRelatedScreen) {
+  if (isAdmin || screen === "admin") {
+    page = <AdminScreen go={go} />;
+  } else if (!isProvider && !isCompany && !isTracao && isProviderRelatedScreen) {
     page = (
       <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-[#e2e7eb] bg-white p-8 text-center shadow-xs">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#111827] text-[#FEC908]">
@@ -1032,6 +1069,16 @@ export default function Home() {
           companyName={companyProfile?.name || session?.name}
           editingOpportunity={editingOpportunity}
           onNotificationTrigger={() => refreshNotifications()}
+        />
+      );
+    } else if (screen === "assistant") {
+      page = (
+        <Assistant
+          go={go}
+          profile={null}
+          accountType="COMPANY"
+          selectedOpportunity={assistantOpportunity}
+          onSelectOpportunity={setAssistantOpportunity}
         />
       );
     } else if (screen === "company-profile" || screen === "account") {

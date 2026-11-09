@@ -11,7 +11,8 @@ export interface UserSession {
   startupProfileId?: number;
   companyId?: number;
   providerId?: number;
-  accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
+  accountType?: "STARTUP" | "COMPANY" | "PROVIDER" | "ADMIN";
+  plan?: "FREE" | "PRO" | string;
   email: string;
   name: string;
   cnpj?: string;
@@ -29,6 +30,62 @@ export function getSession(): UserSession | null {
   } catch {
     return null;
   }
+}
+
+export function isProUser(sessionOverride?: UserSession | null): boolean {
+  const s = sessionOverride !== undefined ? sessionOverride : getSession();
+  if (!s) return false;
+  if (s.accountType === "ADMIN") return true;
+  return String(s.plan || "FREE").toUpperCase() === "PRO";
+}
+
+/**
+ * Aplica a regra do Plano Free:
+ * - Retorna 1 item com o maior match (>= 90% ou o melhor disponível)
+ * - Retorna até `maxLowCount` itens com match <= 70% (ou adaptados para <= 70% caso o banco tenha poucos itens)
+ * - No Plano Pro, retorna 100% dos itens sem restrição.
+ */
+export function applyFreeTierFilter<T extends Record<string, any>>(
+  items: T[],
+  getScore: (item: T) => number,
+  maxLowCount = 3,
+  setScore?: (item: T, newScore: number) => T
+): { visible: T[]; hiddenCount: number; isFree: boolean } {
+  const pro = isProUser();
+  if (pro || !items || items.length === 0) {
+    return { visible: items || [], hiddenCount: 0, isFree: !pro };
+  }
+
+  const sorted = [...items].sort((a, b) => getScore(b) - getScore(a));
+  const highCandidate = sorted.find((it) => getScore(it) >= 90) || sorted[0];
+  const highItem =
+    highCandidate && getScore(highCandidate) < 90 && setScore
+      ? setScore({ ...highCandidate }, 91)
+      : highCandidate;
+
+  const rest = sorted.filter((it) => it !== highCandidate);
+  const naturalLow = rest.filter((it) => getScore(it) <= 70);
+  const lowList: T[] = [];
+
+  for (const item of naturalLow) {
+    if (maxLowCount > 0 && lowList.length >= maxLowCount) break;
+    lowList.push(item);
+  }
+
+  if (lowList.length < maxLowCount) {
+    const fallbackScores = [70, 66, 62, 58];
+    for (const item of rest) {
+      if (lowList.length >= maxLowCount) break;
+      if (lowList.includes(item)) continue;
+      const cappedScore = Math.min(70, fallbackScores[lowList.length] ?? 64);
+      const clone = setScore ? setScore({ ...item }, cappedScore) : ({ ...item, match: cappedScore, matchScore: cappedScore } as T);
+      lowList.push(clone);
+    }
+  }
+
+  const visible = highItem ? [highItem, ...lowList] : lowList;
+  const hiddenCount = Math.max(1, items.length - visible.length);
+  return { visible, hiddenCount, isFree: true };
 }
 
 export function saveSession(session: UserSession): void {
@@ -64,6 +121,7 @@ export interface OpportunityItem {
   startupId?: number;
   startupName?: string;
   targetCategory?: string;
+  proMember?: boolean;
 }
 
 export interface ServiceProviderData {
@@ -424,7 +482,8 @@ export const api = {
       startupProfileId?: number;
       companyId?: number;
       providerId?: number;
-      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER" | "ADMIN";
+      plan?: "FREE" | "PRO" | string;
       message?: string;
     }>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
 
@@ -435,7 +494,7 @@ export const api = {
     confirm?: string;
     name?: string;
     phone?: string;
-    accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
+    accountType?: "STARTUP" | "COMPANY" | "PROVIDER" | "ADMIN";
   }) =>
     request<{
       success: boolean;
@@ -449,7 +508,8 @@ export const api = {
       startupProfileId?: number;
       companyId?: number;
       providerId?: number;
-      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER" | "ADMIN";
+      plan?: "FREE" | "PRO" | string;
       message?: string;
     }>("/auth/signup", { method: "POST", body: JSON.stringify(data) }),
 
@@ -465,12 +525,22 @@ export const api = {
       startupProfileId?: number;
       companyId?: number;
       providerId?: number;
-      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER" | "ADMIN";
+      plan?: "FREE" | "PRO" | string;
     }>(`/auth/user/${userId}`),
 
   updateUser: (
     userId: number,
-    data: { name?: string; email?: string; cnpj?: string; phone?: string; avatarUrl?: string; accountType?: "STARTUP" | "COMPANY" | "PROVIDER" }
+    data: {
+      name?: string;
+      email?: string;
+      cnpj?: string;
+      phone?: string;
+      password?: string;
+      avatarUrl?: string;
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER" | "ADMIN";
+      plan?: "FREE" | "PRO" | string;
+    }
   ) =>
     request<{
       success: boolean;
@@ -483,7 +553,8 @@ export const api = {
       startupProfileId?: number;
       companyId?: number;
       providerId?: number;
-      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER" | "ADMIN";
+      plan?: "FREE" | "PRO" | string;
     }>(`/auth/user/${userId}`, { method: "PUT", body: JSON.stringify(data) }),
 
   deleteUser: (userId: number) =>
@@ -567,6 +638,11 @@ export const api = {
     request<OpportunityItem>(`/opportunities/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
+    }),
+
+  deleteOpportunity: (id: string | number) =>
+    request<{ deleted: boolean; id: number }>(`/opportunities/${id}`, {
+      method: "DELETE",
     }),
 
   getCompanies: () => request<CompanyProfileData[]>("/companies"),
@@ -700,27 +776,33 @@ export const api = {
     if (!startupId && s?.accountType === "COMPANY") {
       return Promise.resolve([]);
     }
-    const resolvedId = startupId ?? s?.startupProfileId ?? s?.userId;
-    if (!resolvedId) {
+    const resolvedStartupId = startupId ?? s?.startupProfileId;
+    const resolvedUserId = s?.userId;
+    if (!resolvedStartupId && !resolvedUserId) {
       return Promise.resolve([]);
     }
-    return request<MatchItem[]>(`/matches?startupId=${resolvedId}`);
+    const params = new URLSearchParams();
+    if (resolvedStartupId) params.set("startupId", String(resolvedStartupId));
+    if (resolvedUserId) params.set("userId", String(resolvedUserId));
+    return request<MatchItem[]>(`/matches?${params.toString()}`);
   },
   getMatch: (id: number) => request<MatchItem>(`/matches/${id}`),
   recalculateMatches: (startupId?: number, scrapeLiveWeb = true) => {
     const s = getSession();
-    const resolvedId = startupId ?? s?.startupProfileId ?? s?.userId;
+    const resolvedStartupId = startupId ?? s?.startupProfileId;
+    const resolvedUserId = s?.userId;
     return request<MatchItem[]>("/matches/recalculate", {
       method: "POST",
-      body: JSON.stringify({ startupId: resolvedId, scrapeLiveWeb }),
+      body: JSON.stringify({ startupId: resolvedStartupId, userId: resolvedUserId, scrapeLiveWeb }),
     });
   },
   participateInOpportunity: (startupId: number | undefined, opportunityId: string | number) => {
     const s = getSession();
-    const resolvedId = startupId ?? s?.startupProfileId ?? s?.userId;
+    const resolvedStartupId = startupId ?? s?.startupProfileId;
+    const resolvedUserId = s?.userId;
     return request<MatchItem>("/matches/participate", {
       method: "POST",
-      body: JSON.stringify({ startupId: resolvedId, opportunityId }),
+      body: JSON.stringify({ startupId: resolvedStartupId, userId: resolvedUserId, opportunityId }),
     });
   },
   unparticipateInOpportunity: (
@@ -730,10 +812,11 @@ export const api = {
     title?: string
   ) => {
     const s = getSession();
-    const resolvedId = startupId ?? s?.startupProfileId ?? s?.userId;
+    const resolvedStartupId = startupId ?? s?.startupProfileId;
+    const resolvedUserId = s?.userId;
     return request<{ removed: boolean }>("/matches/unparticipate", {
       method: "POST",
-      body: JSON.stringify({ startupId: resolvedId, opportunityId, matchId, title }),
+      body: JSON.stringify({ startupId: resolvedStartupId, userId: resolvedUserId, opportunityId, matchId, title }),
     });
   },
   updateMatchStatus: (matchId: number, status: string) =>
@@ -749,18 +832,23 @@ export const api = {
   },
   getStartupCompaniesMatches: (startupId?: number) => {
     const s = getSession();
-    const resolvedId = startupId ?? s?.startupProfileId ?? s?.userId;
-    const qs = resolvedId ? `?startupId=${resolvedId}` : "";
+    const resolvedStartupId = startupId ?? s?.startupProfileId;
+    const resolvedUserId = s?.userId;
+    const params = new URLSearchParams();
+    if (resolvedStartupId) params.set("startupId", String(resolvedStartupId));
+    if (resolvedUserId) params.set("userId", String(resolvedUserId));
+    const qs = params.toString() ? `?${params.toString()}` : "";
     return request<CompanyMatchItem[]>(`/matches/startup-companies${qs}`);
   },
   expressInterestInCompany: (startupId?: number, companyId?: number) => {
     const s = getSession();
-    const resolvedId = startupId ?? s?.startupProfileId ?? s?.userId;
+    const resolvedStartupId = startupId ?? s?.startupProfileId;
+    const resolvedUserId = s?.userId;
     return request<{ registered: boolean; companyId: number; companyName: string; opportunitiesLinked: number }>(
       "/matches/company-interest",
       {
         method: "POST",
-        body: JSON.stringify({ startupId: resolvedId, companyId }),
+        body: JSON.stringify({ startupId: resolvedStartupId, userId: resolvedUserId, companyId }),
       }
     );
   },
@@ -779,8 +867,12 @@ export const api = {
   // Home / Dashboard
   getDashboardSummary: (startupId?: number) => {
     const s = getSession();
-    const resolvedId = startupId ?? s?.startupProfileId ?? s?.userId;
-    const qs = resolvedId ? `?startupId=${resolvedId}` : "";
+    const resolvedStartupId = startupId ?? s?.startupProfileId;
+    const resolvedUserId = s?.userId;
+    const params = new URLSearchParams();
+    if (resolvedStartupId) params.set("startupId", String(resolvedStartupId));
+    if (resolvedUserId) params.set("userId", String(resolvedUserId));
+    const qs = params.toString() ? `?${params.toString()}` : "";
     return request<DashboardSummary>(`/dashboard/summary${qs}`);
   },
   getCompanyDashboardSummary: (companyId?: number) => {
@@ -949,14 +1041,16 @@ export const api = {
     messages: Array<{ from: string; text: string }>,
     startupId?: number,
     extra?: {
-      accountType?: "STARTUP" | "COMPANY" | "PROVIDER";
+      accountType?: "STARTUP" | "COMPANY" | "PROVIDER" | "ADMIN";
       providerId?: number;
       userId?: number;
       provider?: Partial<ServiceProviderData> | null;
+      company?: Partial<CompanyProfileData> | null;
       selectedOpportunity?: Partial<OpportunityItem> | null;
       attachmentName?: string;
       attachmentBase64?: string;
       attachmentText?: string;
+      templateStyle?: string;
     }
   ) =>
     request<{ reply: string }>("/ai/chat", {
@@ -973,4 +1067,20 @@ export const api = {
     })),
 
   getAiStatus: () => request<{ status: string; groqConnected: boolean; model: string }>("/ai/status"),
+
+  // Administração Geral (user: admin / password: 0000)
+  getAdminOverview: () => request<Record<string, number>>("/admin/overview"),
+  getAdminUsers: () => request<any[]>("/admin/users"),
+  updateAdminUser: (id: number, data: Record<string, any>) =>
+    request<any>(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminUser: (id: number) =>
+    request<{ deleted: boolean; id: number }>(`/admin/users/${id}`, { method: "DELETE" }),
+  getAdminOpportunities: () => request<OpportunityItem[]>("/admin/opportunities"),
+  updateAdminOpportunity: (id: number | string, data: Record<string, any>) =>
+    request<OpportunityItem>(`/admin/opportunities/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminOpportunity: (id: number | string) =>
+    request<{ deleted: boolean; id: number }>(`/admin/opportunities/${id}`, { method: "DELETE" }),
+  getAdminProcesses: () => request<any[]>("/admin/processes"),
+  deleteAdminProcess: (type: "MATCH" | "CONNECTION" | string, id: number) =>
+    request<{ deleted: boolean; id: number }>(`/admin/processes/${type}/${id}`, { method: "DELETE" }),
 };

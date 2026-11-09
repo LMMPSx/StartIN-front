@@ -33,9 +33,11 @@ export function Login({
     }
     setLoading(true);
     try {
-      const res = await api.login({ email, password });
+      const res = await api.login({ email: email.trim(), password });
       const accountType: AccountType =
-        res.accountType === "PROVIDER"
+        res.accountType === "ADMIN" || email.trim().toLowerCase() === "admin"
+          ? "ADMIN"
+          : res.accountType === "PROVIDER"
           ? "PROVIDER"
           : res.accountType === "COMPANY"
           ? "COMPANY"
@@ -47,6 +49,7 @@ export function Login({
         companyId: res.companyId,
         providerId: res.providerId,
         accountType,
+        plan: res.plan || (accountType === "ADMIN" ? "PRO" : "FREE"),
         email: res.email,
         name: res.name,
         cnpj: res.cnpj,
@@ -55,7 +58,9 @@ export function Login({
       });
       localStorage.setItem("startin-auth", "1");
       onAuthSuccess();
-      if (accountType === "PROVIDER") {
+      if (accountType === "ADMIN") {
+        go("admin");
+      } else if (accountType === "PROVIDER") {
         go("provider-dashboard");
       } else {
         go("dashboard");
@@ -95,7 +100,7 @@ export function Login({
           </div>
         )}
         <form onSubmit={handleLogin} className="mt-8 space-y-5">
-          <Field label="E-mail" placeholder="seu@email.com" value={email} onChange={setEmail} />
+          <Field label="E-mail ou usuário" placeholder="seu@email.com" value={email} onChange={setEmail} />
           <Field
             label="Senha"
             placeholder="********"
@@ -214,6 +219,7 @@ export function Signup({
         companyId: res.companyId,
         providerId: res.providerId,
         accountType: resolvedType,
+        plan: res.plan || "FREE",
         email: res.email,
         name: res.name || form.name,
         cnpj: res.cnpj || form.cnpj,
