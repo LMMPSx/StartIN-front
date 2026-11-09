@@ -1,121 +1,133 @@
-# StartIn Frontend — React 19, Vite, Tailwind CSS & PWA
+# StartIn Frontend - React 19, TypeScript, Vite, Tailwind CSS & PWA
 
-Interface moderna e responsiva da plataforma **StartIn**, desenvolvida com **React 19**, **TypeScript**, **Vite** e **Tailwind CSS**, preparada para funcionar como **Progressive Web App (PWA)** instalável no desktop e mobile, com estilos CSS modularizados e fluxos segregados por perfil de usuário.
+Interface responsiva da plataforma StartIn, desenvolvida com React 19, TypeScript, Vite e Tailwind CSS, preparada para funcionar como Progressive Web App (PWA) instalavel no desktop e mobile, com fluxos segregados por perfil, sistema de assinatura Freemium/Premium (Free e Pro), exportacao de documentos do Chatbot em PDF/DOCX e painel administrativo completo.
 
 ---
 
-## 🎨 Identidade Visual e Experiência do Usuário
+## 1. Identidade Visual e Experiencia do Usuario
 
 - **Cores Oficiais**:
-  - Preto Primário: `#111827` (Backgrounds dark, tipografia de contraste, botões principais)
-  - Amarelo Destaque: `#FEC908` (Badges de aderência de IA, botões de ação primária, acentos)
-  - Superfícies Claras: `#F9FAFB` e `#FFFFFF`
-- **Tipografia**: Inter / Outfit sans-serif com legibilidade aprimorada.
-- **Marca Oficial**: Logotipo StartIn em vetor sem caixas translúcidas ou backgrounds redundantes no cabeçalho e na tela de login/cadastro.
-- **Tratamento Anti-Overflow**: Cards e caixas de texto com regras estritas de `min-w-0`, `break-words`, `break-all` e `line-clamp`, garantindo que conteúdos extensos ou sem espaçamento não ultrapassem os limites dos cards.
+  - Preto Primario: `#111827` (Backgrounds dark, tipografia de contraste, botoes principais)
+  - Amarelo Destaque: `#FEC908` (Badges de aderencia de IA, selos Pro, botoes de acao primaria, acentos)
+  - Superficies Claras: `#F9FAFB` e `#FFFFFF`
+- **Tipografia**: Inter / Outfit sans-serif com hierarquia visual padronizada.
+- **Seletores Inteligentes (`Outro:`)**: Em todos os perfis e telas (Onboarding, Meu Perfil, Conta e Lancamento de Demandas), os seletores de Categoria Principal, Area de Tecnologia e Setor de Atuacao trazem a opcao padronizada `Outro:`. Ao seleciona-la, o proprio campo se converte em caixa de digitacao no mesmo lugar (com botao `Ver lista` integrado), sem abrir campos extras abaixo.
+- **Tratamento Anti-Overflow**: Cards de oportunidades e demandas contam com regras estritas de `min-w-0`, `break-words` e `line-clamp`, mantendo o layout integro em qualquer resolucao.
 
 ---
 
-## 📱 Suporte a PWA (Progressive Web App)
+## 2. Suporte a PWA (Progressive Web App)
 
-A aplicação conta com arquitetura PWA completa:
-- **`manifest.json`**: Configurado com nome da aplicação, cores temáticas, display standalone e mapa de ícones.
-- **Service Worker (`sw.js`)**: Cache estático e suporte à navegação offline.
-- **Instalação Nativa**: Pode ser instalada diretamente via navegador (Google Chrome, Edge, Safari iOS e Android) comportando-se como um aplicativo nativo no sistema operacional.
-- **Pasta de Ícones PWA**: Centralizada em `client/public/icons/` com resoluções padronizadas (192x192, 512x512, maskable e favicon).
+A aplicacao conta com arquitetura PWA completa:
+- `manifest.json`: Configurado com nome da aplicacao, cores tematicas, display standalone e mapa de icones.
+- Service Worker (`sw.js`): Cache estatico e suporte a navegacao resiliente.
+- Instalacao Nativa: Pode ser instalada diretamente via navegador (Chrome, Edge, Safari iOS e Android).
+- Pasta de Icones PWA: Centralizada em `client/public/icons/` com resolucoes padronizadas (192x192, 512x512, maskable e favicon).
 
 ---
 
-## 📂 Arquitetura de Pastas e CSS Modular
+## 3. Estrutura de Pastas do Frontend
 
-O frontend adota uma organização limpa e modular de estilos, separando responsabilidades:
-
-```
+```text
 StartIN-front-main/
-├── client/
-│   ├── public/
-│   │   ├── manifest.json            # Manifesto PWA
-│   │   ├── sw.js                    # Service Worker para cache e offline
-│   │   └── icons/                   # Ícones oficiais StartIn e PWA
-│   ├── src/
-│   │   ├── components/              # Componentes de UI (Navbar, Sidebar, Modais, Cards)
-│   │   ├── icons/                   # Ícones SVG e Marca Oficial (BrandMarks.tsx)
-│   │   ├── screens/                 # Telas da aplicação (Auth, Dashboard, Para Você, Conta)
-│   │   │   ├── OpportunitiesScreen.tsx  # Oportunidades unificadas e salvas
-│   │   │   ├── AccountScreen.tsx        # Conta & Acesso unificada com Minha Startup
-│   │   │   ├── SearchScreen.tsx         # Busca estilo rede social (Instagram-like)
-│   │   │   └── DashboardScreen.tsx      # Métricas e indicadores
-│   │   └── styles/                  # CSS Modularizado
-│   │       ├── tokens.css           # Variáveis CSS de cores, raios e sombras
-│   │       ├── base.css             # Resets e regras globais de tipografia
-│   │       ├── layout.css           # Estruturas de grid, flexbox e containers
-│   │       ├── components.css       # Estilização de botões, cards, badges e modais
-│   │       ├── pwa.css              # Regras de visualização standalone de PWA
-│   │       └── utilities.css        # Classes utilitárias auxiliares
-├── start_front.bat                  # Inicializador rápido para Windows
-├── package.json                     # Dependências e scripts
-└── vite.config.ts                   # Configuração do Vite e porta 3000
+|-- client/
+|   |-- public/
+|   |   |-- manifest.json                # Manifesto PWA
+|   |   |-- sw.js                        # Service Worker para cache
+|   |   `-- icons/                       # Icones oficiais StartIn e PWA
+|   `-- src/
+|       |-- components/startin/          # Componentes reutilizaveis do ecossistema
+|       |   |-- AppShell.tsx             # Layout autenticado, sidebar e bloqueios Free/Pro
+|       |   |-- CommonUI.tsx             # Campos, botoes, cards e guia de prompt IA
+|       |   `-- PlanComponents.tsx       # Selos Pro Member, Verificado, Banner Ver Mais e Modal Pro
+|       |-- icons/                       # Icones SVG e Marca Oficial (BrandMarks.tsx)
+|       |-- lib/
+|       |   `-- api.ts                   # Cliente HTTP REST, filtro Free sem mutacao de score e tipos
+|       |-- screens/                     # Telas especializadas da aplicacao
+|       |   |-- LandingScreen.tsx        # Landing page publica com comparativo Free vs Pro (R$ 30)
+|       |   |-- AuthScreens.tsx          # Login (incluindo admin / 0000), Cadastro e Recuperacao
+|       |   |-- OnboardingScreen.tsx     # Onboarding de Startups e Empresas
+|       |   |-- DashboardScreen.tsx      # Dashboards de Startup e Empresa
+|       |   |-- OpportunitiesScreen.tsx  # Aba Para Voce, Explorar e Detalhes de Oportunidades
+|       |   |-- MatchesScreen.tsx        # Conexoes e Matches com decomposicao auditada 40/30/30
+|       |   |-- MyOpportunitiesScreen.tsx# Gestao de POCs/Compras corporativas e Busca de Startups
+|       |   |-- ProviderScreens.tsx      # Onboarding 3 etapas + PDF, Recomendacoes e Demandas
+|       |   |-- AssistantScreen.tsx      # Assistente IA com estilo de template e exportacao PDF/DOCX
+|       |   |-- SettingsScreens.tsx      # Configuracoes, Conta, Estagio TRL e Planos
+|       |   `-- AdminScreen.tsx          # Painel de controle e moderacao geral do Administrador
+|       |-- styles/                      # CSS Modularizado (tokens, base, layout, components, pwa)
+|       `-- utils/                       # Formatadores e exportadores (formatters.ts, templateExport.ts)
+|-- start_front.bat                      # Inicializador rapido para Windows
+|-- package.json                         # Dependencias e scripts npm
+`-- vite.config.ts                       # Configuracao do Vite e porta 3000
 ```
 
 ---
 
-## 👥 Fluxos de Usuário Segregados
+## 4. Fluxos de Usuario, Planos (Free vs Pro) e Funcionalidades
 
-Logo no primeiro passo do cadastro (`AuthScreen`), o usuário escolhe o seu perfil:
+### 4.1. Comparativo de Planos (Free vs Pro - R$ 30/mes)
+- **Plano Free**:
+  - Exibe 1 match principal de alta aderencia e ate 3 resultados complementares nas listagens de recomendacoes e conexoes, preservando integralmente o score real calculado pela IA.
+  - Componente `VerMaisProBanner` enxuto ao final das listagens reduzidas para convidar ao upgrade sem exibir textos tecnicos redundantes de faixa percentual.
+  - Limite de lancamento de ate **5 oportunidades por mes** (Empresas e Startups em Tracao).
+  - Sem acesso ao botao "Melhorar texto com IA" na criacao de oportunidades e sem acesso ao Assistente IA (Chatbot).
+  - RAG e atualizacao automatica de editais 1 vez por semana (segundas-feiras as 08:00).
+- **Plano Pro (R$ 30/mes para qualquer perfil)**:
+  - Acesso total a 100% dos matches, oportunidades, empresas, startups e prestadores de servico.
+  - Limite ampliado de ate **15 oportunidades por mes** (Empresas e Startups em Tracao).
+  - Impulsionamento de visibilidade nas oportunidades lancadas, selo `pro member` nos cards e selo `Verificado` ao lado do nome do assinante.
+  - Botao **Melhorar texto com a IA** liberado ao lancar oportunidades e demandas.
+  - Acesso liberado ao **Assistente IA (Chatbot)** e RAG diario as 08:00.
 
-### 1. Fluxo Startup
-- **Onboarding Enxuto em 3 Etapas + IA**:
-  1. **Identidade**: Seletor de área tecnológica principal (com opção `Outro`), localização e site (dados do cadastro inicial como Nome, Telefone e CNPJ ficam editáveis exclusivamente em `Conta e acesso`, sem campo de descrição curta).
-  2. **Solução**: Campo único de *Problema que resolve* com estruturação obrigatória via botão **`Melhorar texto com IA`**, extraindo automaticamente tecnologias, modelo de negócio e tags de matchmaking.
-  3. **Momento (`Validação` vs `Tração`)**: Startups em **Validação** finalizam imediatamente e visualizam `POCs`, `Primeira Compra`, `Editais` e `Eventos`; startups em **Tração** respondem à pesquisa de maturidade **TRL da NASA (1–9)** e anexam o **Atestado de Capacidade Técnica (PDF)** lido pela IA, visualizando `Compras Corporativas` diretas (sem POCs), `Editais` e `Eventos`.
-- **Dashboard Otimizado**: Exibe `Oportunidades encontradas` (soma acumulada histórica), `Empresas com match`, `Matches novos` (delta da última atualização da IA) e `Em acompanhamento`.
-- **"Para você" & Detalhes da Oportunidade**: Filtragem automática pelo estágio da startup (sem botão manual de filtros) e card direto da **Empresa Ofertante** nas oportunidades de `POC`, `Primeira Compra` e `Compra`.
-- **Busca de Empresas**: Exibe no perfil de cada empresa todas as oportunidades (`POC`, `Primeira Compra`, `Compra`) lançadas por ela.
-- **Salvos & Assistente IA Gerador de Templates**: Botão direto em oportunidades salvas para abrir o chat da IA com a oportunidade pré-selecionada, suporte a upload de documentos (PDF/DOCX/TXT) e geração de templates e propostas persuasivas.
+### 4.2. Fluxo Startup (Validacao e Tracao)
+- **Onboarding em 3 Etapas**: Identidade (com seletor `Outro:` no mesmo campo), Solucao estruturada com IA e Momento (`Validacao` vs `Tracao` com escala TRL NASA 1-9 e Atestado de Capacidade Tecnica em PDF).
+- **Alternancia Persistente de Estagio**: Ao alterar o estagio para `Tracao` nas configuracoes, o sistema persiste imediatamente no backend e atualiza os menus para exibir contratacao de prestadores de servico e lancamento de demandas tecnicas (ate 5/mes no Free ou 15/mes no Pro).
 
-### 2. Fluxo Empresa
-- **Dashboard Corporativo**: Exibe os 2 indicadores principais (`Startups que deram match` e `POCs / Compras lançadas`), painel de **Últimas POCs / Compras abertas** (com edição direta ao clicar) e painel de **Últimas startups que deram match** (abrindo o histórico completo de matches ao clicar).
-- **Lançamento e Edição de Oportunidades**: Criação e edição completa de `POC`, `Primeira Compra` e `Compra`.
-- **Busca de Startups com Interesse Destacado**: Exibe startups compatíveis e destaca quais salvaram interesse em participar das POCs/Compras da empresa (sem botão redundante de nova POC e sem Assistente IA no fluxo corporativo).
+### 4.3. Fluxo Prestador de Servicos
+- **Onboarding Resumido em 3 Etapas com Leitura de Curriculo em PDF**:
+  1. `01 · Perfil & Anexos`: Foto/logo opcional, Nome ou Razao Social, Tipo de prestador, **Anexar Curriculo em PDF (Obrigatorio)**, LinkedIn (opcional) e Meu Site / Portfolio (opcional). A IA processa o PDF imediatamente e extrai categoria, servico principal, tecnologias dominadas, experiencia e gera a descricao previa em 1a pessoa.
+  2. `02 · Competencias, Tecnologias & Servicos`: Revisao e edicao dos campos extraidos pela IA (incluindo Categoria Principal com opcao `Outro:` editavel no mesmo campo).
+  3. `03 · Descricao Profissional`: Campo pre-preenchido com a descricao profissional gerada pela IA a partir do curriculo em PDF, permitindo edicao livre e aprimoramento via botao **Melhorar com IA**.
+- **Recomendacoes de Oportunidades**: Exibe diretamente as demandas tecnicas e oportunidades lancadas pelas startups em Tracao com o score real e simetrico da IA.
 
-### 🖼 Foto de Perfil Individualizada
-Cada perfil (seja Startup ou Empresa) possui sua própria imagem de avatar isolada, persistida tanto no estado da sessão quanto no banco de dados, sem vazamento de imagem ao alternar de conta.
+### 4.4. Fluxo Empresa
+- **Dashboard e Gestao de Oportunidades**: Lancamento e edicao de `POC`, `Primeira Compra` e `Compra` respeitando o limite mensal do plano (5 no Free, 15 no Pro), com impulsao e melhoria por IA no Plano Pro.
+- **Busca de Startups**: Matchmaking auditado e simetrico com todas as startups compativeis.
+
+### 4.5. Assistente IA (Chatbot) com Estilo de Template e Exportacao PDF/DOCX
+- Permite ao usuario definir um estilo de template personalizado (ou digitar `padrao` para usar o formato padrao da IA).
+- Exportacao nativa de qualquer template ou resposta gerada pela IA diretamente em formato **PDF** ou **DOCX** (`utils/templateExport.ts`).
+
+### 4.6. Fluxo Administrador (`AdminScreen.tsx`)
+- Login direto com usuario `admin` e senha `0000`.
+- Controle centralizado de usuarios, perfis, planos (`FREE` / `PRO`), oportunidades corporativas e demandas de startups, com edicao e exclusao em tempo real.
 
 ---
 
-## 🚀 Como Executar
+## 5. Como Executar
 
-### Pré-requisitos
-- **Node.js**: Versão 18 ou superior.
-- **npm** instalado.
+### Pre-requisitos
+- Node.js: Versao 18 ou superior.
+- npm instalado.
 
-### Passo 1: Instalar Dependências (primeira execução)
+### Passo 1: Instalar Dependencias
 ```bash
 npm install
 ```
 
 ### Passo 2: Executar em Modo de Desenvolvimento
-#### Opção A: Script Rápido (Windows)
-```powershell
-.\start_front.bat
-```
-
-#### Opção B: Via Terminal npm
 ```bash
 npm run dev
 ```
+Ou via script no Windows:
+```powershell
+.\start_front.bat
+```
+A aplicacao estara disponivel em `http://localhost:3000`.
 
-A aplicação subirá na porta padrão configurada: **`http://localhost:3000`** (ou `http://localhost:5173` caso configurado alternativamente).
-
-### Passo 3: Build de Produção
-Para validar e compilar os pacotes estáticos com minificação e otimização:
+### Passo 3: Build de Producao
 ```bash
 npm run build
 ```
-Os arquivos otimizados serão gerados na pasta `dist/`.
-
----
-
-## 🔗 Integração com Outros Serviços
-- **Backend Spring Boot**: Comunica-se via REST na porta `8080` (`/api/auth`, `/api/startups`, `/api/companies`, `/api/opportunities`, `/api/matches`).
-- **Microserviço de IA Python**: Comunica-se via endpoints proxy ou diretos na porta `8000` (`/api/ai/chat`, `/api/ai/match`).
+Os pacotes otimizados serao gerados no diretorio `dist/`.

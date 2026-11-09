@@ -1052,7 +1052,7 @@ export function Onboarding({
               >
                 {COMPANY_SECTOR_AREAS.map((sec) => (
                   <option key={sec} value={sec}>
-                    {sec}
+                    {sec === "Outro" ? "Outro:" : sec}
                   </option>
                 ))}
               </select>
@@ -1465,7 +1465,7 @@ export function Onboarding({
             >
               {MAIN_TECH_AREAS.map((area) => (
                 <option key={area} value={area}>
-                  {area}
+                  {area === "Outro" ? "Outro:" : area}
                 </option>
               ))}
             </select>

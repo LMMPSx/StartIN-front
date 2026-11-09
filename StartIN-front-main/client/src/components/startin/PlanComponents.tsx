@@ -87,9 +87,6 @@ export function VerMaisProBanner({
               <span className="rounded-md bg-[#111827] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#f5c800]">
                 Plano Free Ativo
               </span>
-              <span className="text-xs font-bold text-[#795900]">
-                Exibindo 1 match de alta aderência (&gt;=90%) e resultados limitados (&lt;=70%)
-              </span>
             </div>
             <h4 className="mt-2 font-['Poppins'] text-base font-bold text-gray-900">
               Quer desbloquear 100% dos melhores matches e {contextLabel}?
@@ -238,7 +235,7 @@ export function ProUpgradeModal({
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check size={15} className="mt-0.5 shrink-0 text-emerald-600" />
-                  <span>Até 10 oportunidades lançadas por mês para Empresas e Startups em Tração</span>
+                  <span>Até 5 oportunidades lançadas por mês para Empresas e Startups em Tração</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check size={15} className="mt-0.5 shrink-0 text-emerald-600" />
@@ -352,7 +349,7 @@ export function ProUpgradeModal({
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check size={15} className="mt-0.5 shrink-0 text-[#f5c800]" />
-                  <span>Até 10 oportunidades impulsionadas por mês com destaque visual na vitrine</span>
+                  <span>Até 15 oportunidades impulsionadas por mês com destaque visual na vitrine</span>
                 </li>
               </ul>
             </div>

@@ -49,7 +49,7 @@ export function applyFreeTierFilter<T extends Record<string, any>>(
   items: T[],
   getScore: (item: T) => number,
   maxLowCount = 3,
-  setScore?: (item: T, newScore: number) => T
+  _setScore?: (item: T, newScore: number) => T
 ): { visible: T[]; hiddenCount: number; isFree: boolean } {
   const pro = isProUser();
   if (pro || !items || items.length === 0) {
@@ -57,13 +57,9 @@ export function applyFreeTierFilter<T extends Record<string, any>>(
   }
 
   const sorted = [...items].sort((a, b) => getScore(b) - getScore(a));
-  const highCandidate = sorted.find((it) => getScore(it) >= 90) || sorted[0];
-  const highItem =
-    highCandidate && getScore(highCandidate) < 90 && setScore
-      ? setScore({ ...highCandidate }, 91)
-      : highCandidate;
+  const highItem = sorted[0];
 
-  const rest = sorted.filter((it) => it !== highCandidate);
+  const rest = sorted.filter((it) => it !== highItem);
   const naturalLow = rest.filter((it) => getScore(it) <= 70);
   const lowList: T[] = [];
 
@@ -73,13 +69,10 @@ export function applyFreeTierFilter<T extends Record<string, any>>(
   }
 
   if (lowList.length < maxLowCount) {
-    const fallbackScores = [70, 66, 62, 58];
     for (const item of rest) {
       if (lowList.length >= maxLowCount) break;
       if (lowList.includes(item)) continue;
-      const cappedScore = Math.min(70, fallbackScores[lowList.length] ?? 64);
-      const clone = setScore ? setScore({ ...item }, cappedScore) : ({ ...item, match: cappedScore, matchScore: cappedScore } as T);
-      lowList.push(clone);
+      lowList.push(item);
     }
   }
 
@@ -1035,6 +1028,43 @@ export const api = {
     }).then((res) => ({
       ...res,
       attestationSummary: stripMarkdownToPlainText(res.attestationSummary),
+    })),
+
+  extractProviderResumeAI: (data: {
+    fileName: string;
+    fileBase64: string;
+    providerName?: string;
+    providerType?: string;
+    linkedinUrl?: string;
+    portfolioUrl?: string;
+  }) =>
+    request<{
+      extracted: boolean;
+      fileName: string;
+      category: string;
+      mainService: string;
+      toolsAndSkills: string;
+      tags: string[];
+      experienceYears: string;
+      location: string;
+      projectName: string;
+      projectType?: string;
+      projectYear?: string;
+      interestSectors?: string;
+      connectionPreference?: string;
+      opportunitiesSought?: string;
+      description: string;
+      serviceExperience?: string;
+      projectDescription?: string;
+      extractedHighlights?: string[];
+    }>("/ai/extract-provider-resume", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }).then((res) => ({
+      ...res,
+      description: stripMarkdownToPlainText(res.description),
+      serviceExperience: stripMarkdownToPlainText(res.serviceExperience || res.description),
+      projectDescription: stripMarkdownToPlainText(res.projectDescription || res.description),
     })),
 
   chatAI: (

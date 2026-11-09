@@ -639,7 +639,7 @@ export function LandingScreen({
                       <Check size={13} strokeWidth={3} />
                     </span>
                     <span className="text-gray-200">
-                      <strong>Até 10 oportunidades lançadas por mês</strong> para Empresas e Startups em Tração.
+                      <strong>Até 5 oportunidades lançadas por mês</strong> para Empresas e Startups em Tração.
                     </span>
                   </div>
 
@@ -788,7 +788,7 @@ export function LandingScreen({
                       <Check size={13} strokeWidth={3} />
                     </span>
                     <span className="text-white">
-                      <strong>Até 10 oportunidades impulsionadas por mês</strong> com destaque visual na vitrine para atrair os melhores parceiros.
+                      <strong>Até 15 oportunidades impulsionadas por mês</strong> com destaque visual na vitrine para atrair os melhores parceiros.
                     </span>
                   </div>
                 </div>

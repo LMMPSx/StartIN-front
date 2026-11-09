@@ -171,7 +171,7 @@ export function MyOpportunities({
               POCs e Compras lançadas pela empresa
             </h2>
             <span className="rounded-md bg-gray-100 px-2.5 py-0.5 text-[10.5px] font-bold text-gray-700">
-              Limite mensal: {opps.length} / 10 oportunidades no mês
+              Limite mensal: {opps.length} / {isProUser(session) ? 15 : 5} oportunidades no mês
             </span>
             {isProUser(session) && <ProMemberBadge />}
           </div>
@@ -576,7 +576,7 @@ export function CreateForm({
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-bold text-gray-800">
-                  Limite de lançamento: até 10 oportunidades por mês
+                  Limite de lançamento: até {proCompany ? 15 : 5} oportunidades por mês
                 </span>
                 {proCompany ? (
                   <>
@@ -2530,7 +2530,7 @@ export function CompanyProfileScreen({
                 >
                   {COMPANY_SECTOR_AREAS.map((sec) => (
                     <option key={sec} value={sec}>
-                      {sec}
+                      {sec === "Outro" ? "Outro:" : sec}
                     </option>
                   ))}
                 </select>

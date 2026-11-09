@@ -1232,7 +1232,7 @@ export function SubSettings({
                     >
                       {MAIN_TECH_AREAS.map((area) => (
                         <option key={area} value={area}>
-                          {area}
+                          {area === "Outro" ? "Outro:" : area}
                         </option>
                       ))}
                     </select>
@@ -1627,17 +1627,41 @@ export function SubSettings({
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               <label className="text-xs font-semibold text-[#587086]">
                 Área principal
-                <select
-                  value={selectedMainArea}
-                  onChange={(e) => setSelectedMainArea(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#111827]"
-                >
-                  {MAIN_TECH_AREAS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
+                {selectedMainArea === "Outro" ? (
+                  <div className="relative mt-2 flex items-center">
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Digite a área principal..."
+                      value={customMainArea}
+                      onChange={(e) => setCustomMainArea(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-[#111827] bg-white pl-3 pr-24 text-xs font-medium text-[#244766] outline-none focus:border-[#111827]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMainArea(MAIN_TECH_AREAS[0]);
+                        setCustomMainArea("");
+                      }}
+                      className="absolute right-1.5 inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-[10px] font-bold text-[#111827] transition hover:bg-gray-200"
+                      title="Voltar para a lista de áreas"
+                    >
+                      Ver lista <ChevronDown size={11} />
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedMainArea}
+                    onChange={(e) => setSelectedMainArea(e.target.value)}
+                    className="mt-2 h-10 w-full rounded-lg border border-[#dce3e8] bg-[#f3f6f8] px-3 text-xs font-medium text-[#244766] outline-none focus:border-[#111827]"
+                  >
+                    {MAIN_TECH_AREAS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt === "Outro" ? "Outro:" : opt}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </label>
 
               <label className="text-xs font-semibold text-[#587086]">

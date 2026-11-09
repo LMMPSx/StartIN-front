@@ -87,7 +87,7 @@ const PRESET_PROVIDER_CATEGORIES = [
 ];
 
 // =========================================================================
-// 1. ONBOARDING DO PRESTADOR DE SERVIÇOS (PRINTS 1, 2, 3, 4)
+// 1. ONBOARDING DO PRESTADOR DE SERVIÇOS (RESUMIDO EM 3 ETAPAS COM EXTRAÇÃO DE CURRÍCULO EM PDF)
 // =========================================================================
 export function ProviderOnboardingScreen({
   go,
@@ -96,25 +96,26 @@ export function ProviderOnboardingScreen({
   go: (s: Screen) => void;
   onComplete?: () => void;
 }) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
+  const [extractingResume, setExtractingResume] = useState(false);
+  const [resumeFileName, setResumeFileName] = useState("");
+  const [resumeExtracted, setResumeExtracted] = useState(false);
+  const [resumeHighlights, setResumeHighlights] = useState<string[]>([]);
   const [enhancingBioAi, setEnhancingBioAi] = useState(false);
   const [bioAiEnhancedNotice, setBioAiEnhancedNotice] = useState(false);
-  const [enhancingAi, setEnhancingAi] = useState(false);
-  const [aiEnhancedNotice, setAiEnhancedNotice] = useState(false);
-  const [enhancingProjectAi, setEnhancingProjectAi] = useState(false);
-  const [projectAiEnhancedNotice, setProjectAiEnhancedNotice] = useState(false);
   const [error, setError] = useState("");
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const photoInputRef = React.useRef<HTMLInputElement | null>(null);
+  const resumeInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const session = getSession();
 
-  // Formulário das 4 Etapas (inicia limpo, sem textos mockados pré-preenchidos)
+  // Formulário das 3 Etapas
   const [form, setForm] = useState<ServiceProviderData>({
     name: session?.name || "",
     providerType: "PROFISSIONAL",
-    category: "Design",
+    category: "Tecnologia",
     photoUrl: "",
     description: "",
     location: "",
@@ -126,7 +127,7 @@ export function ProviderOnboardingScreen({
     toolsAndSkills: "",
     complementaryCategory: "",
     targetSegment: "",
-    experienceYears: "",
+    experienceYears: "3–5 anos" as any,
     projectName: "",
     projectLink: "",
     projectDescription: "",
@@ -136,11 +137,11 @@ export function ProviderOnboardingScreen({
     projectType: "",
     projectCoverUrl: "",
     interestSectors: "",
-    connectionPreference: "",
+    connectionPreference: "Projetos sob demanda",
     opportunitiesSought: "",
-    interestRegion: "",
+    interestRegion: "Brasil (Remoto)",
     targetStartupSize: "Tração",
-    communicationLanguage: "",
+    communicationLanguage: "Português",
     tags: "",
     matchScore: 90,
   });
@@ -161,7 +162,6 @@ export function ProviderOnboardingScreen({
       const rawDataUrl = typeof reader.result === "string" ? reader.result : "";
       if (!rawDataUrl) return;
 
-      // Redimensiona imagens raster grandes via Canvas para upload rápido e leve no banco
       if (file.type === "image/svg+xml") {
         setForm((prev) => ({ ...prev, photoUrl: rawDataUrl, avatarUrl: rawDataUrl } as ServiceProviderData));
         return;
@@ -216,6 +216,89 @@ export function ProviderOnboardingScreen({
     }
   };
 
+  // Processar e extrair dados do Currículo em PDF (Obrigatório na Etapa 1)
+  const processResumePdfFile = (file: File) => {
+    const isPdf =
+      file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      setError("Por favor, anexe o seu currículo obrigatoriamente em formato PDF (.pdf).");
+      return;
+    }
+    setError("");
+    setResumeFileName(file.name);
+    setExtractingResume(true);
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      const base64Part = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+      try {
+        const res = await api.extractProviderResumeAI({
+          fileName: file.name,
+          fileBase64: base64Part,
+          providerName: form.name || session?.name || "",
+          providerType: form.providerType,
+          linkedinUrl: form.linkedinUrl,
+          portfolioUrl: form.portfolioUrl,
+        });
+
+        setForm((prev) => ({
+          ...prev,
+          category: res.category || prev.category || "Tecnologia",
+          mainService: res.mainService || prev.mainService,
+          toolsAndSkills: res.toolsAndSkills || prev.toolsAndSkills,
+          tags: Array.isArray(res.tags) && res.tags.length > 0 ? res.tags.join(", ") : prev.tags,
+          experienceYears: (res.experienceYears || prev.experienceYears || "3–5 anos") as any,
+          location: res.location || prev.location || "Recife, PE",
+          projectName: res.projectName || prev.projectName,
+          projectType: res.projectType || prev.projectType || "Consultoria técnica",
+          projectYear: res.projectYear || prev.projectYear || "2026",
+          projectTools: res.toolsAndSkills || prev.projectTools,
+          interestSectors: res.interestSectors || prev.interestSectors || "Tecnologia / SaaS, IA & Dados, Finanças",
+          connectionPreference: res.connectionPreference || prev.connectionPreference || "Projetos sob demanda",
+          opportunitiesSought: res.opportunitiesSought || prev.opportunitiesSought || "Desenvolver MVPs, Prestar consultoria especializada",
+          description: res.description || prev.description,
+          serviceExperience: res.serviceExperience || res.description || prev.serviceExperience,
+          projectDescription: res.projectDescription || res.description || prev.projectDescription,
+        }));
+
+        if (res.category && !PRESET_PROVIDER_CATEGORIES.includes(res.category)) {
+          setIsCustomCategory(true);
+        } else {
+          setIsCustomCategory(false);
+        }
+
+        setResumeHighlights(
+          Array.isArray(res.extractedHighlights) && res.extractedHighlights.length > 0
+            ? res.extractedHighlights
+            : [
+                `Categoria e serviço identificados: ${res.category} · ${res.mainService}`,
+                `Tecnologias e competências extraídas: ${res.toolsAndSkills}`,
+                "Descrição profissional prévia gerada automaticamente para a Etapa 3",
+              ]
+        );
+        setResumeExtracted(true);
+      } catch {
+        setResumeExtracted(true);
+        setResumeHighlights([
+          `Currículo anexado: ${file.name}`,
+          "Experiências, tecnologias e descrição prévia preparadas para revisão.",
+        ]);
+      } finally {
+        setExtractingResume(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleResumeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processResumePdfFile(file);
+    }
+    e.target.value = "";
+  };
+
   // Carregar dados existentes se houver
   useEffect(() => {
     async function loadExisting() {
@@ -233,6 +316,8 @@ export function ProviderOnboardingScreen({
             ...existing,
             description: isDefaultPlaceholderDesc ? "" : existing.description || "",
           });
+          setResumeExtracted(true);
+          setResumeFileName("curriculo_cadastrado.pdf");
           if (
             existing.category &&
             !PRESET_PROVIDER_CATEGORIES.includes(existing.category)
@@ -247,11 +332,11 @@ export function ProviderOnboardingScreen({
     loadExisting();
   }, [session?.userId]);
 
-  // Melhorar descrição profissional (Bio - Etapa 1) com IA
+  // Melhorar descrição profissional (Etapa 3) com IA mantendo coesão com o que o usuário modificou
   const handleEnhanceBioWithAi = async () => {
     const rawText = (form.description || "").trim();
     if (!rawText) {
-      setError("Escreva algumas palavras sobre sua atuação ou bio para a IA estruturar.");
+      setError("Escreva ou revise algumas palavras na descrição para a IA aprimorar.");
       return;
     }
     setError("");
@@ -259,39 +344,23 @@ export function ProviderOnboardingScreen({
     try {
       const res = await api.enhanceProviderServicesAI({
         text: rawText,
-        category: form.category || "Marketing",
+        category: form.category || "Tecnologia",
         providerName: form.name,
-        mainService: "",
+        mainService: form.mainService || "",
         providerType: form.providerType,
         fieldType: "bio",
       });
       if (res.enhancedText) {
         const extractedTools = res.toolsAndSkills || res.technologies || "";
-        setForm((prev) => {
-          const isStaleDesignService =
-            prev.category !== "Design" &&
-            (!prev.mainService ||
-              prev.mainService.toLowerCase().includes("ux/ui") ||
-              prev.mainService.toLowerCase().includes("design"));
-          const isStaleDesignTools =
-            prev.category !== "Design" &&
-            (!prev.toolsAndSkills ||
-              prev.toolsAndSkills.toLowerCase().includes("figma") ||
-              prev.toolsAndSkills.toLowerCase().includes("wireframes"));
-          return {
-            ...prev,
-            description: res.enhancedText,
-            mainService:
-              isStaleDesignService && res.mainService
-                ? res.mainService
-                : prev.mainService,
-            toolsAndSkills:
-              isStaleDesignTools && extractedTools
-                ? extractedTools
-                : prev.toolsAndSkills || extractedTools,
-            tags: res.tags && res.tags.length > 0 ? res.tags.join(", ") : prev.tags,
-          };
-        });
+        setForm((prev) => ({
+          ...prev,
+          description: res.enhancedText,
+          serviceExperience: res.enhancedText,
+          projectDescription: res.enhancedText,
+          mainService: prev.mainService || res.mainService || prev.category,
+          toolsAndSkills: prev.toolsAndSkills || extractedTools,
+          tags: res.tags && res.tags.length > 0 ? res.tags.join(", ") : prev.tags,
+        }));
         setBioAiEnhancedNotice(true);
       }
     } catch {
@@ -301,95 +370,46 @@ export function ProviderOnboardingScreen({
     }
   };
 
-  // Melhorar descrição de serviços (Etapa 2) com IA
-  const handleEnhanceWithAi = async () => {
-    const rawText = (form.serviceExperience || form.description || "").trim();
-    if (!rawText) {
-      setError("Escreva algumas palavras sobre sua experiência para a IA melhorar.");
-      return;
-    }
-    setError("");
-    setEnhancingAi(true);
-    try {
-      const res = await api.enhanceProviderServicesAI({
-        text: rawText,
-        category: form.category,
-        providerName: form.name,
-        mainService: form.mainService,
-        providerType: form.providerType,
-        fieldType: "services",
-      });
-      if (res.enhancedText) {
-        const extractedTools = res.toolsAndSkills || res.technologies || "";
-        setForm((prev) => ({
-          ...prev,
-          serviceExperience: res.enhancedText,
-          toolsAndSkills: extractedTools || prev.toolsAndSkills,
-          tags: res.tags && res.tags.length > 0 ? res.tags.join(", ") : prev.tags,
-        }));
-        setAiEnhancedNotice(true);
-      }
-    } catch (err: any) {
-      setError("Erro ao consultar a IA. Tente novamente.");
-    } finally {
-      setEnhancingAi(false);
-    }
-  };
-
-  // Melhorar descrição do Case / Projeto (Etapa 3) com IA
-  const handleEnhanceProjectWithAi = async () => {
-    const rawText = (form.projectDescription || "").trim();
-    if (!rawText) {
-      setError("Escreva algumas palavras sobre o projeto ou case para a IA estruturar.");
-      return;
-    }
-    setError("");
-    setEnhancingProjectAi(true);
-    try {
-      const res = await api.enhanceProviderServicesAI({
-        text: rawText,
-        category: form.category || "Tecnologia",
-        providerName: form.name,
-        mainService: form.projectName || form.projectType || "",
-        providerType: form.providerType,
-        fieldType: "project",
-      });
-      if (res.enhancedText) {
-        const extractedTools = res.toolsAndSkills || res.technologies || "";
-        setForm((prev) => ({
-          ...prev,
-          projectDescription: res.enhancedText,
-          projectTools: extractedTools || prev.projectTools || "",
-        }));
-        setProjectAiEnhancedNotice(true);
-      }
-    } catch {
-      setError("Erro ao consultar a IA. Tente novamente.");
-    } finally {
-      setEnhancingProjectAi(false);
-    }
-  };
-
   const handleNextStep = () => {
     setError("");
     if (step === 1) {
-      if (!form.name.trim() || !form.category.trim()) {
-        setError("Preencha seu nome e selecione a categoria principal.");
+      if (!form.name.trim()) {
+        setError("Preencha seu nome completo ou razão social.");
+        return;
+      }
+      if (!resumeFileName && !resumeExtracted && !form.id) {
+        setError("Anexe seu currículo em PDF (obrigatório) para que a IA extraia suas experiências, tecnologias e serviços.");
+        return;
+      }
+      if (extractingResume) {
+        setError("Aguarde um instante enquanto a IA conclui a leitura do seu currículo em PDF.");
         return;
       }
       setStep(2);
     } else if (step === 2) {
-      if (!form.mainService.trim()) {
-        setError("Informe seu serviço principal.");
+      if (!form.category.trim() || !form.mainService.trim()) {
+        setError("Confirme sua categoria principal e o serviço principal oferecido.");
         return;
       }
+      if (!form.description.trim()) {
+        const fallbackDesc = `Atuo na área de ${form.category} com foco em ${form.mainService}, utilizando ${
+          form.toolsAndSkills || form.category
+        } para apoiar startups em estágios de validação e tração com entregas ágeis e orientadas a resultados.`;
+        setForm((prev) => ({
+          ...prev,
+          description: fallbackDesc,
+          serviceExperience: fallbackDesc,
+        }));
+      }
       setStep(3);
-    } else if (step === 3) {
-      setStep(4);
     }
   };
 
   const handleFinish = async () => {
+    if (!form.description.trim()) {
+      setError("Revise ou escreva sua descrição profissional antes de concluir o cadastro.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
@@ -406,13 +426,19 @@ export function ProviderOnboardingScreen({
       }
 
       const resolvedPhoto = form.photoUrl || (form as any).avatarUrl || "";
+      const unifiedDescription = form.description.trim();
       const payload: Partial<ServiceProviderData> = {
         ...form,
         id: targetId,
         userId: session?.userId,
         photoUrl: resolvedPhoto,
         avatarUrl: resolvedPhoto,
-        experienceYears: String(form.experienceYears ?? "4") as any,
+        description: unifiedDescription,
+        serviceExperience: form.serviceExperience?.trim() || unifiedDescription,
+        projectDescription: form.projectDescription?.trim() || unifiedDescription,
+        projectTools: form.projectTools?.trim() || form.toolsAndSkills,
+        tags: form.tags?.trim() || form.toolsAndSkills,
+        experienceYears: String(form.experienceYears ?? "3–5 anos") as any,
       };
 
       let saved: ServiceProviderData;
@@ -422,7 +448,6 @@ export function ProviderOnboardingScreen({
         saved = await api.createProvider(payload);
       }
 
-      // Atualiza a sessão com o ID do provedor
       if (session) {
         saveSession({
           ...session,
@@ -444,18 +469,23 @@ export function ProviderOnboardingScreen({
   return (
     <div className="min-h-screen bg-[#f8fafc] py-10 px-4 md:px-8">
       <div className="mx-auto max-w-3xl">
-        {/* Barra de Progresso das 4 Etapas */}
+        {/* Barra de Progresso das 3 Etapas */}
         <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between text-xs font-bold text-gray-500">
-            <span className="text-[#111827]">Passo {step} de 4</span>
-            <span>{step === 1 ? "Perfil" : step === 2 ? "Serviços" : step === 3 ? "Portfólio" : "Preferências"}</span>
+            <span className="text-[#111827]">Passo {step} de 3</span>
+            <span>
+              {step === 1
+                ? "Perfil & Anexos"
+                : step === 2
+                  ? "Competências & Serviços"
+                  : "Descrição Profissional"}
+            </span>
           </div>
-          <div className="mt-3 grid grid-cols-4 gap-2">
+          <div className="mt-3 grid grid-cols-3 gap-2">
             {[
-              { num: "01", label: "Perfil" },
-              { num: "02", label: "Serviços" },
-              { num: "03", label: "Portfólio" },
-              { num: "04", label: "Preferências" },
+              { num: "01", label: "Perfil & Anexos" },
+              { num: "02", label: "Competências & Serviços" },
+              { num: "03", label: "Descrição Profissional" },
             ].map((s, idx) => {
               const currentNum = idx + 1;
               const isPast = step > currentNum;
@@ -490,22 +520,22 @@ export function ProviderOnboardingScreen({
         )}
 
         {/* =========================================================================
-            ETAPA 1: PERFIL DO PRESTADOR (PRINT 1)
+            ETAPA 1: PERFIL & ANEXOS (CURRÍCULO EM PDF OBRIGATÓRIO + LINKEDIN E SITE OPCIONAIS)
         ========================================================================== */}
         {step === 1 && (
           <div className="rounded-3xl border border-gray-200 bg-white p-6 md:p-8 shadow-xs">
             <h1 className="text-2xl font-black tracking-[-.04em] text-[#111827]">
-              01 · Perfil do Prestador
+              01 · Perfil & Anexos
             </h1>
             <p className="mt-1.5 text-xs text-gray-500">
-              Preencha as informações básicas do seu perfil para que startups possam encontrar você.
+              Anexe seu currículo em PDF para que nossa IA extraia automaticamente suas experiências, tecnologias que domina, serviços e elabore sua descrição prévia.
             </p>
 
             <div className="mt-6 space-y-5">
               {/* Foto de Perfil / Logo */}
               <div>
                 <label className="block text-xs font-bold text-[#111827] mb-2">
-                  Foto de perfil ou logo
+                  Foto de perfil ou logo (opcional)
                 </label>
                 <input
                   ref={photoInputRef}
@@ -525,7 +555,7 @@ export function ProviderOnboardingScreen({
                       if (droppedFile) processPhotoFile(droppedFile);
                     }}
                     title="Clique para anexar foto ou logo"
-                    className="group relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 transition hover:border-[#111827] hover:bg-gray-100/70 hover:text-[#111827]"
+                    className="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 transition hover:border-[#111827] hover:bg-gray-100/70 hover:text-[#111827]"
                   >
                     {form.photoUrl ? (
                       <img
@@ -534,7 +564,7 @@ export function ProviderOnboardingScreen({
                         className="h-full w-full rounded-3xl object-cover"
                       />
                     ) : (
-                      <Camera size={34} />
+                      <Camera size={30} />
                     )}
                   </button>
                   {form.photoUrl && (
@@ -553,7 +583,7 @@ export function ProviderOnboardingScreen({
               {/* Nome */}
               <Field
                 label="Nome completo ou Razão Social"
-                placeholder="Ex: Ana Martins ou Studio Alpha Design"
+                placeholder="Ex: Vinícius Cândido ou Studio Alpha"
                 value={form.name}
                 onChange={(v) => updateField("name", v)}
               />
@@ -591,81 +621,237 @@ export function ProviderOnboardingScreen({
                 </div>
               </div>
 
-              {/* Categoria Principal */}
-              <div>
-                <label className="block text-xs font-bold text-[#111827] mb-2">
-                  Categoria Principal de Atuação
-                </label>
-                <select
-                  value={isCustomCategory ? "OUTRO" : form.category}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "OUTRO") {
-                      setIsCustomCategory(true);
-                      if (PRESET_PROVIDER_CATEGORIES.includes(form.category)) {
-                        updateField("category", "");
-                      }
-                    } else {
-                      setIsCustomCategory(false);
-                      updateField("category", val);
-                    }
-                  }}
-                  className="startin-input text-xs"
-                >
-                  <option value="Design">Design (UI/UX, Produto, Branding)</option>
-                  <option value="Tecnologia">Tecnologia (Desenvolvimento Full Stack, Mobile, DevOps)</option>
-                  <option value="Marketing">Marketing & Growth</option>
-                  <option value="Consultoria">Consultoria de Negócios & Produto</option>
-                  <option value="Jurídico">Jurídico & Compliance</option>
-                  <option value="Financeiro">Financeiro & Captação</option>
-                  <option value="OUTRO">Outro:</option>
-                </select>
+              {/* Anexo de Currículo em PDF (Obrigatório) */}
+              <div className="rounded-2xl border-2 border-dashed border-[#111827]/25 bg-[#f8fafc] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <label className="text-xs font-extrabold text-[#111827] flex items-center gap-1.5">
+                    <FileText size={15} className="text-[#111827]" />
+                    Anexar Currículo em PDF
+                    <span className="rounded-md bg-[#111827] px-2 py-0.5 text-[10px] font-black uppercase text-[#FEC908]">
+                      Obrigatório
+                    </span>
+                  </label>
+                  {resumeFileName && (
+                    <button
+                      type="button"
+                      onClick={() => resumeInputRef.current?.click()}
+                      className="text-[11px] font-bold text-[#111827] underline hover:text-black"
+                    >
+                      Substituir PDF
+                    </button>
+                  )}
+                </div>
 
-                {isCustomCategory && (
-                  <div className="mt-3">
-                    <label className="block text-[11px] font-bold text-gray-600 mb-1.5">
-                      Outro: qual é a sua função ou área de atuação?
-                    </label>
-                    <input
-                      type="text"
-                      autoFocus
-                      placeholder="Digite sua função (ex: Contabilidade, RH, Dados & IA, Cibersegurança...)"
-                      value={form.category}
-                      onChange={(e) => updateField("category", e.target.value)}
-                      className="startin-input text-xs"
-                    />
+                <p className="text-[11px] text-gray-500 mb-3">
+                  A IA analisará o PDF anexado para puxar automaticamente suas experiências, tecnologias que domina, serviços e criar uma descrição prévia coesa.
+                </p>
+
+                <input
+                  ref={resumeInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={handleResumeFileChange}
+                  className="hidden"
+                />
+
+                <div
+                  onClick={() => resumeInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const dropped = e.dataTransfer.files?.[0];
+                    if (dropped) processResumePdfFile(dropped);
+                  }}
+                  className="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 text-center transition hover:border-[#111827]"
+                >
+                  {extractingResume ? (
+                    <div className="flex flex-col items-center justify-center gap-2 py-2">
+                      <Sparkles size={22} className="animate-spin text-[#ca8a04]" />
+                      <span className="text-xs font-extrabold text-[#111827]">
+                        Lendo currículo em PDF e extraindo experiências, tecnologias e serviços com a IA...
+                      </span>
+                    </div>
+                  ) : resumeFileName ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-800 border border-emerald-200">
+                        <CheckCircle2 size={14} className="text-emerald-600" />
+                        {resumeFileName}
+                      </div>
+                      <span className="text-[11px] text-gray-500">
+                        Currículo processado pela IA · Clique para trocar o arquivo se desejar
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-2">
+                      <FilePlus2 size={24} className="text-[#111827]" />
+                      <span className="text-xs font-extrabold text-[#111827]">
+                        Clique para selecionar seu currículo em PDF ou arraste o arquivo aqui
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        Formato aceito: .PDF (Currículo, Portfólio Técnico ou Apresentação Profissional)
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {resumeExtracted && resumeHighlights.length > 0 && (
+                  <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-left">
+                    <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-900 mb-1.5">
+                      <Sparkles size={13} className="text-emerald-700" />
+                      Dados extraídos do currículo pela IA:
+                    </div>
+                    <ul className="space-y-1 text-[11px] text-emerald-800">
+                      {resumeHighlights.map((hl, i) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <Check size={12} className="mt-0.5 shrink-0 text-emerald-600" />
+                          <span>{hl}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>
 
-              {/* Descrição Profissional com Mini Tutorial e botão de IA */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="startin-field-label">Descrição profissional (Bio)</span>
-                  <button
-                    type="button"
-                    onClick={handleEnhanceBioWithAi}
-                    disabled={enhancingBioAi}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#111827] px-3 py-1 text-[11px] font-extrabold text-[#FEC908] transition hover:bg-black disabled:opacity-50"
-                  >
-                    <Sparkles size={13} />
-                    {enhancingBioAi ? "Melhorando com IA..." : "Melhorar com IA"}
-                  </button>
-                </div>
-                <textarea
-                  value={form.description || ""}
-                  onChange={(e) => updateField("description", e.target.value)}
-                  placeholder="Escreva com suas palavras sobre o que você faz, quais canais ou ferramentas domina e como ajuda startups a crescer..."
-                  rows={5}
-                  className="startin-textarea transition text-xs"
+              {/* LinkedIn (Opcional) e Meu Site (Opcional) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  label="LinkedIn (Opcional)"
+                  placeholder="https://linkedin.com/in/seu-perfil"
+                  value={form.linkedinUrl}
+                  onChange={(v) => updateField("linkedinUrl", v)}
                 />
-                {bioAiEnhancedNotice && (
-                  <p className="mt-1 text-[11px] font-bold text-[#15803d]">
-                    ✓ Descrição profissional melhorada em 1ª pessoa pela IA da StartIn!
-                  </p>
-                )}
-                <div className="mt-3">
-                  <AiPromptTutorialGuide role="provider" fieldContext="bio" />
+                <Field
+                  label="Meu Site / Portfólio (Opcional)"
+                  placeholder="https://meusite.com.br"
+                  value={form.portfolioUrl}
+                  onChange={(v) => updateField("portfolioUrl", v)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <PrimaryButton onClick={handleNextStep} disabled={extractingResume}>
+                Salvar e continuar <ArrowRight size={16} />
+              </PrimaryButton>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            ETAPA 2: COMPETÊNCIAS, TECNOLOGIAS & SERVIÇOS EXTRAÍDOS DO CURRÍCULO
+        ========================================================================== */}
+        {step === 2 && (
+          <div className="rounded-3xl border border-gray-200 bg-white p-6 md:p-8 shadow-xs">
+            <h1 className="text-2xl font-black tracking-[-.04em] text-[#111827]">
+              02 · Competências, Tecnologias & Serviços
+            </h1>
+            <p className="mt-1.5 text-xs text-gray-500">
+              Revise ou ajuste as experiências, tecnologias dominadas e serviços identificados pela IA a partir do seu currículo.
+            </p>
+
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-2.5 text-[11px] font-semibold text-amber-900 flex items-center gap-2">
+              <Sparkles size={14} className="shrink-0 text-amber-600" />
+              <span>
+                Estes campos foram preenchidos automaticamente com base no seu currículo em PDF e alimentam o motor de matchmaking.
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-5">
+              {/* Categoria Principal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#111827] mb-2">
+                    Categoria Principal de Atuação
+                  </label>
+                  {isCustomCategory ? (
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Digite sua área de atuação..."
+                        value={form.category}
+                        onChange={(e) => updateField("category", e.target.value)}
+                        className="startin-input pr-24 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomCategory(false);
+                          updateField("category", PRESET_PROVIDER_CATEGORIES[0]);
+                        }}
+                        className="absolute right-1.5 inline-flex items-center gap-1 rounded-md bg-gray-100 px-2.5 py-1.5 text-[11px] font-bold text-[#111827] transition hover:bg-gray-200"
+                        title="Voltar para a lista de categorias"
+                      >
+                        Ver lista <ChevronDown size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={form.category}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "OUTRO") {
+                          setIsCustomCategory(true);
+                          if (PRESET_PROVIDER_CATEGORIES.includes(form.category)) {
+                            updateField("category", "");
+                          }
+                        } else {
+                          setIsCustomCategory(false);
+                          updateField("category", val);
+                        }
+                      }}
+                      className="startin-input text-xs"
+                    >
+                      <option value="Design">Design (UI/UX, Produto, Branding)</option>
+                      <option value="Tecnologia">Tecnologia (Desenvolvimento Full Stack, Mobile, DevOps)</option>
+                      <option value="Marketing">Marketing & Growth</option>
+                      <option value="Consultoria">Consultoria de Negócios & Produto</option>
+                      <option value="Jurídico">Jurídico & Compliance</option>
+                      <option value="Financeiro">Financeiro & Captação</option>
+                      <option value="OUTRO">Outro:</option>
+                    </select>
+                  )}
+                </div>
+
+                <Field
+                  label="Serviço Principal Oferecido"
+                  placeholder="Ex: Desenvolvimento Full Stack, UX/UI Design, Marketing Estratégico..."
+                  value={form.mainService}
+                  onChange={(v) => updateField("mainService", v)}
+                />
+              </div>
+
+              {/* Tecnologias e Ferramentas Dominadas */}
+              <Field
+                label="Tecnologias, Ferramentas e Competências que domina"
+                placeholder="Ex: React, TypeScript, Node.js, Python, Figma, Meta Ads, Gestão de Projetos..."
+                value={form.toolsAndSkills}
+                onChange={(v) => updateField("toolsAndSkills", v)}
+              />
+
+              {/* Experiência em Destaque e Anos de Experiência */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  label="Experiência / Case ou Projeto em Destaque"
+                  placeholder="Ex: Arquitetura e Desenvolvimento de Plataforma SaaS"
+                  value={form.projectName}
+                  onChange={(v) => updateField("projectName", v)}
+                />
+                <div>
+                  <label className="block text-xs font-bold text-[#111827] mb-2">
+                    Tempo de Experiência
+                  </label>
+                  <select
+                    value={String(form.experienceYears || "3–5 anos")}
+                    onChange={(e) => updateField("experienceYears", e.target.value)}
+                    className="startin-input text-xs"
+                  >
+                    <option value="menos de 1 ano">Menos de 1 ano</option>
+                    <option value="1–3 anos">1 a 3 anos</option>
+                    <option value="3–5 anos">3 a 5 anos</option>
+                    <option value="5–8 anos">5 a 8 anos</option>
+                    <option value="8+ anos">Mais de 8 anos</option>
+                  </select>
                 </div>
               </div>
 
@@ -694,113 +880,20 @@ export function ProviderOnboardingScreen({
                 </div>
               </div>
 
-              {/* Links de Portfólio e LinkedIn */}
+              {/* Setores de interesse e Modelo de conexão */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field
-                  label="Portfólio / Website (opcional)"
-                  placeholder="https://meuportfolio.com"
-                  value={form.portfolioUrl}
-                  onChange={(v) => updateField("portfolioUrl", v)}
+                  label="Setores de startups de maior interesse"
+                  placeholder="Ex: Tecnologia / SaaS, IA & Dados, Finanças, Saúde"
+                  value={form.interestSectors}
+                  onChange={(v) => updateField("interestSectors", v)}
                 />
                 <Field
-                  label="LinkedIn (opcional)"
-                  placeholder="https://linkedin.com/in/usuario"
-                  value={form.linkedinUrl}
-                  onChange={(v) => updateField("linkedinUrl", v)}
+                  label="Modelo de atuação / contratação preferido"
+                  placeholder="Ex: Projetos sob demanda, Contrato PJ, Consultoria"
+                  value={form.connectionPreference}
+                  onChange={(v) => updateField("connectionPreference", v)}
                 />
-              </div>
-            </div>
-
-            <div className="mt-8 flex justify-end">
-              <PrimaryButton onClick={handleNextStep}>
-                Salvar e continuar <ArrowRight size={16} />
-              </PrimaryButton>
-            </div>
-          </div>
-        )}
-
-        {/* =========================================================================
-            ETAPA 2: SERVIÇOS PRESTADOS (PRINT 2)
-        ========================================================================== */}
-        {step === 2 && (
-          <div className="rounded-3xl border border-gray-200 bg-white p-6 md:p-8 shadow-xs">
-            <h1 className="text-2xl font-black tracking-[-.04em] text-[#111827]">
-              02 · Serviços Prestados
-            </h1>
-            <p className="mt-1.5 text-xs text-gray-500">
-              Detalhe os serviços que você oferece e suas principais competências técnicas.
-            </p>
-
-            <div className="mt-6 space-y-5">
-              <Field
-                label="Serviço Principal Oferecido"
-                placeholder="Ex: UX/UI Design para SaaS, Desenvolvimento React/Node, etc."
-                value={form.mainService}
-                onChange={(v) => updateField("mainService", v)}
-              />
-
-              {/* Descrição detalhada da experiência com Mini Tutorial e botão de IA */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="startin-field-label">Descrição da Experiência e Serviços</span>
-                  <button
-                    type="button"
-                    onClick={handleEnhanceWithAi}
-                    disabled={enhancingAi}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#111827] px-3 py-1 text-[11px] font-extrabold text-[#FEC908] transition hover:bg-black disabled:opacity-50"
-                  >
-                    <Sparkles size={13} />
-                    {enhancingAi ? "Melhorando com IA..." : "Melhorar com IA"}
-                  </button>
-                </div>
-                <textarea
-                  value={form.serviceExperience || ""}
-                  onChange={(e) => updateField("serviceExperience", e.target.value)}
-                  placeholder="Descreva como você executa seus serviços, metodologias utilizadas, entregáveis e benefícios diretos para a startup..."
-                  rows={5}
-                  className="startin-textarea transition text-xs"
-                />
-                {aiEnhancedNotice && (
-                  <p className="mt-1 text-[11px] font-bold text-[#15803d]">
-                    ✓ Experiência e serviços aprimorados em 1ª pessoa pela IA da StartIn!
-                  </p>
-                )}
-                <div className="mt-3">
-                  <AiPromptTutorialGuide role="provider" fieldContext="services" />
-                </div>
-              </div>
-
-              {/* Ferramentas e Tecnologias Dominadas */}
-              <Field
-                label="Ferramentas e Tecnologias dominadas (separadas por vírgula)"
-                placeholder="Ex: Figma, React, Node.js, TypeScript, Docker, AWS"
-                value={form.toolsAndSkills}
-                onChange={(v) => updateField("toolsAndSkills", v)}
-              />
-
-              {/* Segmento e Anos de Experiência */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field
-                  label="Segmento de startups atendidas"
-                  placeholder="Ex: B2B SaaS, Healthtech, Fintech"
-                  value={form.targetSegment}
-                  onChange={(v) => updateField("targetSegment", v)}
-                />
-                <div>
-                  <label className="block text-xs font-bold text-[#111827] mb-2">
-                    Anos de Experiência no mercado
-                  </label>
-                  <select
-                    value={form.experienceYears}
-                    onChange={(e) => updateField("experienceYears", Number(e.target.value))}
-                    className="startin-input text-xs"
-                  >
-                    <option value={1}>1 a 2 anos</option>
-                    <option value={3}>3 a 5 anos</option>
-                    <option value={6}>6 a 8 anos</option>
-                    <option value={10}>Mais de 10 anos</option>
-                  </select>
-                </div>
               </div>
             </div>
 
@@ -820,165 +913,58 @@ export function ProviderOnboardingScreen({
         )}
 
         {/* =========================================================================
-            ETAPA 3: PORTFÓLIO & CASES (PRINT 3)
+            ETAPA 3: DESCRIÇÃO PROFISSIONAL PRÉ-PREENCHIDA PELO CURRÍCULO + MELHORAR COM IA
         ========================================================================== */}
         {step === 3 && (
           <div className="rounded-3xl border border-gray-200 bg-white p-6 md:p-8 shadow-xs">
             <h1 className="text-2xl font-black tracking-[-.04em] text-[#111827]">
-              03 · Portfólio & Cases de Sucesso
+              03 · Descrição Profissional
             </h1>
             <p className="mt-1.5 text-xs text-gray-500">
-              Adicione projetos relevantes para aumentar sua credibilidade com as startups.
+              A IA elaborou uma descrição prévia em 1ª pessoa com base no seu currículo em PDF anexado na Etapa 1. Você pode modificar livremente o texto e usar o botão &ldquo;Melhorar com IA&rdquo; sempre que quiser refiná-lo.
             </p>
 
             <div className="mt-6 space-y-5">
-              <Field
-                label="Nome do Projeto / Case"
-                placeholder="Ex: Redesign da Plataforma SaaS Nexa"
-                value={form.projectName}
-                onChange={(v) => updateField("projectName", v)}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field
-                  label="Tipo de Projeto"
-                  placeholder="Ex: MVP, Redesign, App Mobile, Squad Ágil"
-                  value={form.projectType}
-                  onChange={(v) => updateField("projectType", v)}
-                />
-                <Field
-                  label="Ano de Conclusão"
-                  placeholder="Ex: 2025"
-                  value={form.projectYear}
-                  onChange={(v) => updateField("projectYear", v)}
-                />
-              </div>
-
-              {/* Descrição do Case com Mini Tutorial e botão de IA */}
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <span className="startin-field-label">
-                    Descrição do Case (Desafio, Solução e Resultado)
+                    Apresentação Profissional, Experiências e Serviços
                   </span>
                   <button
                     type="button"
-                    onClick={handleEnhanceProjectWithAi}
-                    disabled={enhancingProjectAi}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#111827] px-3 py-1 text-[11px] font-extrabold text-[#FEC908] transition hover:bg-black disabled:opacity-50"
+                    onClick={handleEnhanceBioWithAi}
+                    disabled={enhancingBioAi}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#111827] px-3.5 py-1.5 text-[11px] font-extrabold text-[#FEC908] transition hover:bg-black disabled:opacity-50"
                   >
                     <Sparkles size={13} />
-                    {enhancingProjectAi ? "Melhorando com IA..." : "Melhorar com IA"}
+                    {enhancingBioAi ? "Melhorando com IA..." : "Melhorar com IA"}
                   </button>
                 </div>
                 <textarea
-                  value={form.projectDescription || ""}
-                  onChange={(e) => updateField("projectDescription", e.target.value)}
-                  placeholder="Explique qual era o problema da startup, como você resolveu na prática e quais resultados alcançou..."
-                  rows={5}
-                  className="startin-textarea transition text-xs"
+                  value={form.description || ""}
+                  onChange={(e) => {
+                    updateField("description", e.target.value);
+                    updateField("serviceExperience", e.target.value);
+                  }}
+                  placeholder="Descreva suas experiências, tecnologias que domina e como seus serviços ajudam startups a escalar..."
+                  rows={7}
+                  className="startin-textarea transition text-xs leading-relaxed"
                 />
-                {projectAiEnhancedNotice && (
-                  <p className="mt-1 text-[11px] font-bold text-[#15803d]">
-                    ✓ Descrição do projeto melhorada em 1ª pessoa pela IA da StartIn!
+                {bioAiEnhancedNotice && (
+                  <p className="mt-1.5 text-[11px] font-bold text-[#15803d]">
+                    ✓ Descrição profissional aprimorada em 1ª pessoa pela IA da StartIn!
                   </p>
                 )}
                 <div className="mt-3">
-                  <AiPromptTutorialGuide role="provider" fieldContext="project" />
+                  <AiPromptTutorialGuide role="provider" fieldContext="bio" />
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field
-                  label="Link do Projeto / Case (URL pública)"
-                  placeholder="https://meucase.com ou Behance / Dribbble"
-                  value={form.projectLink}
-                  onChange={(v) => updateField("projectLink", v)}
-                />
-                <Field
-                  label="Repositório / Demo (se aplicável)"
-                  placeholder="https://github.com/exemplo ou link funcional"
-                  value={form.projectRepoUrl}
-                  onChange={(v) => updateField("projectRepoUrl", v)}
-                />
-              </div>
-
-              <Field
-                label="Tecnologias e Ferramentas do Case"
-                placeholder="Ex: Figma, React, Tailwind CSS, TypeScript"
-                value={form.projectTools}
-                onChange={(v) => updateField("projectTools", v)}
-              />
             </div>
 
             <div className="mt-8 flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-black"
-              >
-                <ArrowLeft size={14} /> Voltar
-              </button>
-              <PrimaryButton onClick={handleNextStep}>
-                Salvar e continuar <ArrowRight size={16} />
-              </PrimaryButton>
-            </div>
-          </div>
-        )}
-
-        {/* =========================================================================
-            ETAPA 4: PREFERÊNCIAS DE PARCERIA (PRINT 4)
-        ========================================================================== */}
-        {step === 4 && (
-          <div className="rounded-3xl border border-gray-200 bg-white p-6 md:p-8 shadow-xs">
-            <h1 className="text-2xl font-black tracking-[-.04em] text-[#111827]">
-              04 · Preferências de Parceria
-            </h1>
-            <p className="mt-1.5 text-xs text-gray-500">
-              Defina os tipos de startups e formatos de contratação que você tem mais interesse em atender.
-            </p>
-
-            <div className="mt-6 space-y-5">
-              <Field
-                label="Setores de maior interesse"
-                placeholder="Ex: Fintech, Healthtech, SaaS B2B, Logística"
-                value={form.interestSectors}
-                onChange={(v) => updateField("interestSectors", v)}
-              />
-
-              <Field
-                label="Modelo de conexão preferido"
-                placeholder="Ex: Squad sob demanda, Contrato PJ, Projeto por escopo"
-                value={form.connectionPreference}
-                onChange={(v) => updateField("connectionPreference", v)}
-              />
-
-              <Field
-                label="Oportunidades buscadas"
-                placeholder="Ex: Demandas imediatas, desenvolvimento de MVP, sprints mensais"
-                value={form.opportunitiesSought}
-                onChange={(v) => updateField("opportunitiesSought", v)}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field
-                  label="Região de interesse"
-                  placeholder="Ex: Todo o Brasil (100% Remoto)"
-                  value={form.interestRegion}
-                  onChange={(v) => updateField("interestRegion", v)}
-                />
-                <Field
-                  label="Idiomas de comunicação"
-                  placeholder="Ex: Português, Inglês"
-                  value={form.communicationLanguage}
-                  onChange={(v) => updateField("communicationLanguage", v)}
-                />
-              </div>
-            </div>
-
-            <div className="mt-8 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setStep(3)}
                 className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-black"
               >
                 <ArrowLeft size={14} /> Voltar
@@ -3908,7 +3894,7 @@ export function StartupServiceDemandsScreen({
             Demandas Técnicas para Prestadores
           </h1>
           <p className="mt-1 text-xs text-gray-600">
-            Publique demandas de desenvolvimento, design e squads para prestadores e software houses qualificadas (limite de até 10 oportunidades por mês).
+            Publique demandas de desenvolvimento, design e squads para prestadores e software houses qualificadas (limite de até {proStartup ? 15 : 5} oportunidades por mês).
           </p>
         </div>
 
@@ -3938,7 +3924,7 @@ export function StartupServiceDemandsScreen({
         </div>
         <div className="flex items-center gap-3">
           <span className="rounded-lg bg-[#f8fafc] border border-[#e2e8f0] px-3 py-1.5 text-[11px] font-extrabold text-[#111827]">
-            {demands.length} / 10 oportunidades no mês
+            {demands.length} / {proStartup ? 15 : 5} oportunidades no mês
           </span>
           {!proStartup && (
             <button
@@ -4044,7 +4030,11 @@ export function CreateServiceDemandScreen({
   const startupName = session?.name || "Startup";
 
   const [title, setTitle] = useState(existingDemand?.title || "");
-  const [targetCategory, setTargetCategory] = useState(existingDemand?.targetCategory || "Tecnologia");
+  const initialTargetCat = existingDemand?.targetCategory || "Tecnologia";
+  const [targetCategory, setTargetCategory] = useState(initialTargetCat);
+  const [isCustomTargetCategory, setIsCustomTargetCategory] = useState(
+    Boolean(initialTargetCat && !PRESET_PROVIDER_CATEGORIES.includes(initialTargetCat))
+  );
   const [description, setDescription] = useState(existingDemand?.description || "");
   const [tags, setTags] = useState(existingDemand?.tags || "");
   const [meta, setMeta] = useState(existingDemand?.meta || "");
@@ -4158,18 +4148,54 @@ export function CreateServiceDemandScreen({
             <label className="block text-xs font-bold text-[#111827] mb-2">
               Categoria Alvo do Prestador
             </label>
-            <select
-              value={targetCategory}
-              onChange={(e) => setTargetCategory(e.target.value)}
-              className="startin-input text-xs"
-            >
-              <option value="Tecnologia">Tecnologia (Desenvolvimento / Software)</option>
-              <option value="Design">Design (UX/UI, Design System)</option>
-              <option value="Marketing">Marketing & Aquisição</option>
-              <option value="Consultoria">Consultoria Técnica / Negócios</option>
-              <option value="Jurídico">Jurídico & Compliance</option>
-              <option value="Financeiro">Financeiro & Captação</option>
-            </select>
+            {isCustomTargetCategory ? (
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Digite a categoria alvo da demanda..."
+                  value={targetCategory}
+                  onChange={(e) => setTargetCategory(e.target.value)}
+                  className="startin-input pr-24 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomTargetCategory(false);
+                    setTargetCategory("Tecnologia");
+                  }}
+                  className="absolute right-1.5 inline-flex items-center gap-1 rounded-md bg-gray-100 px-2.5 py-1.5 text-[11px] font-bold text-[#111827] transition hover:bg-gray-200"
+                  title="Voltar para a lista de categorias"
+                >
+                  Ver lista <ChevronDown size={12} />
+                </button>
+              </div>
+            ) : (
+              <select
+                value={targetCategory}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "OUTRO") {
+                    setIsCustomTargetCategory(true);
+                    if (PRESET_PROVIDER_CATEGORIES.includes(targetCategory)) {
+                      setTargetCategory("");
+                    }
+                  } else {
+                    setIsCustomTargetCategory(false);
+                    setTargetCategory(val);
+                  }
+                }}
+                className="startin-input text-xs"
+              >
+                <option value="Tecnologia">Tecnologia (Desenvolvimento / Software)</option>
+                <option value="Design">Design (UX/UI, Design System)</option>
+                <option value="Marketing">Marketing & Aquisição</option>
+                <option value="Consultoria">Consultoria Técnica / Negócios</option>
+                <option value="Jurídico">Jurídico & Compliance</option>
+                <option value="Financeiro">Financeiro & Captação</option>
+                <option value="OUTRO">Outro:</option>
+              </select>
+            )}
           </div>
 
           <div>
@@ -4213,8 +4239,8 @@ export function CreateServiceDemandScreen({
             <div className="mt-2 rounded-xl border border-gray-200 bg-[#f8fafc] p-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-600">
               <span>
                 {proStartup
-                  ? "Sua demanda receberá o selo Pro Member e será impulsionada na frente para os prestadores."
-                  : "No Plano Free, oportunidades têm menos visibilidade e limite de até 10 oportunidades/mês."}
+                  ? "Sua demanda receberá o selo Pro Member, será impulsionada na frente para os prestadores e seu limite é de até 15 oportunidades/mês."
+                  : "No Plano Free, oportunidades têm menos visibilidade e limite de até 5 oportunidades/mês."}
               </span>
               {proStartup && <ProMemberBadge compact />}
             </div>
@@ -4807,7 +4833,7 @@ export function ProviderProfileScreen({
                   <option value="Consultoria">Consultoria de Negócios & Produto</option>
                   <option value="Jurídico">Jurídico & Compliance</option>
                   <option value="Financeiro">Financeiro & Captação</option>
-                  <option value="Outro">Outro (digitar função...)</option>
+                  <option value="Outro">Outro:</option>
                 </select>
               )}
             </label>
