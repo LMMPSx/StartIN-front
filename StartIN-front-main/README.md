@@ -131,3 +131,14 @@ A aplicacao estara disponivel em `http://localhost:3000`.
 npm run build
 ```
 Os pacotes otimizados serao gerados no diretorio `dist/`.
+
+
+---
+
+## Deploy no Vercel
+
+- Root Directory no Vercel: `StartIN-front-main` (preset `Vite`, build `npm run build`, saida `dist/public`, ja definidos em `vercel.json`).
+- Variavel obrigatoria: `VITE_API_URL` com a URL do backend no Railway (ex.: `https://seu-backend.up.railway.app/api`). Apos alterar, faca Redeploy.
+- Sem `VITE_API_URL`, o modo dev usa `http://localhost:8080/api`.
+
+Passo a passo completo: [../DEPLOY.md](../DEPLOY.md).

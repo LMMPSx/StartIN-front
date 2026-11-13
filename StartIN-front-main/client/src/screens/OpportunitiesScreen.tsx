@@ -102,11 +102,27 @@ export function removeOpportunityLocally(
 function detectPlatformLabel(item: OpportunityItem): string {
   if (item.companyName) return item.companyName;
   const combined = `${item.externalUrl || ""} ${item.title || ""} ${item.tags || ""}`.toLowerCase();
+  if (combined.includes("capitaai")) {
+    if (combined.includes("finep")) return "Capitaai · FINEP";
+    if (combined.includes("faperj")) return "Capitaai · FAPERJ";
+    if (combined.includes("fapemig")) return "Capitaai · FAPEMIG";
+    if (combined.includes("fapesp")) return "Capitaai · FAPESP";
+    if (combined.includes("centelha")) return "Capitaai · Centelha";
+    return "Capitaai · Editais Abertos";
+  }
   if (combined.includes("fapesp") || combined.includes("pipe")) return "FAPESP PIPE";
   if (combined.includes("finep")) return "FINEP";
   if (combined.includes("inovastartups") || combined.includes("sebrae"))
     return "InovaStartups / Sebrae";
-  if (combined.includes("startupconnect") || combined.includes("recife"))
+  if (
+    combined.includes("recnplay") ||
+    combined.includes("portodigital") ||
+    combined.includes("gramadosummit") ||
+    combined.includes("websummit") ||
+    combined.includes("startupsummit") ||
+    combined.includes("startupconnect") ||
+    combined.includes("recife")
+  )
     return "Ecossistema / Eventos";
   return "StartIn / Corporativo";
 }
@@ -124,6 +140,103 @@ function isTracaoStage(stage?: string): boolean {
   return s.includes("tracao");
 }
 
+interface ForYouCacheEntry {
+  items: OpportunityItem[];
+  fetchedAt: number;
+}
+
+const forYouCache = new Map<string, ForYouCacheEntry>();
+
+export function invalidateForYouCache() {
+  forYouCache.clear();
+}
+
+function getLatestEightAmTimestamp(now = Date.now()): number {
+  const d = new Date(now);
+  const eightAmToday = new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    8,
+    0,
+    0,
+    0
+  ).getTime();
+  return now >= eightAmToday ? eightAmToday : eightAmToday - 24 * 60 * 60 * 1000;
+}
+
+function buildForYouCacheKey(
+  startupId?: number,
+  profile?: StartupProfileData | null
+): string {
+  return [
+    startupId ?? profile?.id ?? "default",
+    profile?.currentStage ?? "",
+    profile?.mainArea ?? "",
+    profile?.technologies ?? "",
+  ].join("|");
+}
+
+const DEEP_EDITAL_FALLBACKS: Record<string, string> = {
+  fapesp: "https://fapesp.br/pipe/normas/",
+  finep: "https://legacy.finep.gov.br/images/a-finep/EFPC/19_12_2025_EFPC_Edital_Rerratificado.pdf",
+  inova: "https://inovastartups.com.br/edital-inova-6a-edicao.pdf",
+  faperj: "https://www.faperj.br/rp/downloads/Edital_FAPPERJ_N%C2%BA_26_2026_%E2%80%93_Bolsa_de_Inova%C3%A7%C3%A3o_Tecnol%C3%B3gica_(INT).pdf",
+  fapemig: "https://api.site.fapemig.br/wp-content/uploads/2026-10-09__195__12819__sei_150716523_edital_fapemig_sede___018_2026___hubmg_gov__Am0Er84Q.pdf",
+  centelha: "https://www.fapeal.br/wp-content/uploads/2026/10/V.03.-Edital-FAPEAL-no-06.2026-Centelha-3-AL-2a-Retificacao_resulatdo-Fase-1-em-13.11.2026.pdf",
+  fapeal: "https://www.fapeal.br/wp-content/uploads/2026/10/V.03.-Edital-FAPEAL-no-06.2026-Centelha-3-AL-2a-Retificacao_resulatdo-Fase-1-em-13.11.2026.pdf",
+  "porto digital": "https://portodigital.org/noticia/recnplay-capitulo-saude-conecta-os-ecossistemas-de-saude-e-tecnologia-do-recife-confira-a-programacao/",
+  recnplay: "https://recnplay.pe/recnplay-estreia-programacao-de-cinema-de-rua-com-mais-de-30-curtas-pernambucanos-e-o-agente-secreto/",
+  "rec'n'play": "https://recnplay.pe/recnplay-estreia-programacao-de-cinema-de-rua-com-mais-de-30-curtas-pernambucanos-e-o-agente-secreto/",
+  gramado: "https://gramadosummit.com/lp-startup",
+  "web summit": "https://rio.websummit.com/pt-br/startups/pitch/",
+  "startup summit": "https://www.startupsummit.com.br/ingressos",
+};
+
+function isBareHomepageOrListing(rawUrl: string): boolean {
+  const trimmed = (rawUrl || "").trim().toLowerCase();
+  if (!trimmed) return true;
+  const normalized = trimmed.replace(/\/+$/, "");
+  const bareUrls = new Set([
+    "https://inovastartups.com.br",
+    "https://fapesp.br/pipe/chamadas",
+    "https://fapesp.br",
+    "http://www.finep.gov.br/chamadas-publicas/chamadaspublicas?situacao=aberta",
+    "https://www.finep.gov.br/chamadas-publicas/chamadaspublicas?situacao=aberta",
+    "https://www.finep.gov.br",
+    "http://www.finep.gov.br",
+    "https://portodigital.org",
+    "https://www.portodigital.org",
+    "https://recnplay.pe",
+    "https://www.recnplay.pe",
+    "https://gramadosummit.com",
+    "https://www.gramadosummit.com",
+    "https://www.startupsummit.com.br",
+    "https://startupsummit.com.br",
+    "https://rio.websummit.com",
+    "https://capitaai.com.br",
+    "https://capitaai.com.br/editais-abertos",
+    "https://capitaai.com.br/editais-abertos/para-startup",
+  ]);
+  if (bareUrls.has(normalized)) return true;
+  return normalized.includes("capitaai.com.br/captacao");
+}
+
+function resolveDeepEditalUrl(rawUrl?: string | null, title?: string | null): string {
+  const trimmed = (rawUrl || "").trim();
+  if (trimmed && !isBareHomepageOrListing(trimmed)) {
+    return trimmed;
+  }
+  const lowTitle = (title || "").toLowerCase();
+  const lowUrl = trimmed.toLowerCase();
+  for (const [key, deepUrl] of Object.entries(DEEP_EDITAL_FALLBACKS)) {
+    if (lowTitle.includes(key) || lowUrl.includes(key.replace(/\s+/g, ""))) {
+      return deepUrl;
+    }
+  }
+  return trimmed || "https://inovastartups.com.br/edital-inova-6a-edicao.pdf";
+}
+
 type SortOption = "match-desc" | "match-asc" | "title-asc" | "title-desc";
 
 export function Opportunities({
@@ -138,10 +251,20 @@ export function Opportunities({
   profile?: StartupProfileData | null;
   onSelectOpportunity: (o: OpportunityItem) => void;
 }) {
+  const cacheKey = buildForYouCacheKey(startupId, profile);
+  const cachedEntry = forYouCache.get(cacheKey);
+  const isCacheValid = Boolean(
+    cachedEntry &&
+      cachedEntry.items.length > 0 &&
+      cachedEntry.fetchedAt >= getLatestEightAmTimestamp()
+  );
+
   const [query, setQuery] = useState("");
   const [type, setType] = useState<OpportunityType>("Todos");
-  const [items, setItems] = useState<OpportunityItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<OpportunityItem[]>(() =>
+    isCacheValid && cachedEntry ? cachedEntry.items : []
+  );
+  const [loading, setLoading] = useState(!isCacheValid);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("match-desc");
   const [, setPlanVersion] = useState(0);
@@ -160,19 +283,24 @@ export function Opportunities({
 
   useEffect(() => {
     let cancelled = false;
+    const currentCached = forYouCache.get(cacheKey);
+    if (
+      currentCached &&
+      currentCached.items.length > 0 &&
+      currentCached.fetchedAt >= getLatestEightAmTimestamp()
+    ) {
+      setItems(currentCached.items);
+      setLoading(false);
+      return;
+    }
+
     const loadOpportunitiesAndMatches = async () => {
       setLoading(true);
       try {
-        // 1. Busca os matches e oportunidades já persistidos no MySQL
+        // 1. Busca os matches e oportunidades já persistidos no MySQL (mantidos pela IA até as 08h)
         let matches = await api.getMatches(startupId).catch(() => [] as MatchItem[]);
         let opps = await api.getOpportunities().catch(() => [] as OpportunityItem[]);
 
-        const hasEdital =
-          opps.some((o) => (o.type || "").toUpperCase() === "EDITAL") ||
-          matches.some((m) => (m.opportunityType || "").toUpperCase() === "EDITAL");
-        const hasEvento =
-          opps.some((o) => (o.type || "").toUpperCase() === "EVENTO") ||
-          matches.some((m) => (m.opportunityType || "").toUpperCase() === "EVENTO");
         const hasCompatibleMatches = matches.some((m) => {
           const t = (m.opportunityType || "").toUpperCase();
           if (tracaoActive) {
@@ -181,11 +309,10 @@ export function Opportunities({
           return t !== "COMPRA";
         });
 
-        // 2. Se não houver matches, ou se faltarem Editais / Eventos, ou se os matches não forem compatíveis com o estágio,
-        // aciona o recalculateMatches com raspagem ativa da web (scrape=true) para popular o banco via IA!
-        if (matches.length === 0 || !hasEdital || !hasEvento || !hasCompatibleMatches) {
+        // 2. Só solicita cálculo ao backend caso ainda não existam matches compatíveis no ciclo atual
+        if (matches.length === 0 || !hasCompatibleMatches) {
           const calculated = await api
-            .recalculateMatches(startupId || profile?.id, true)
+            .recalculateMatches(startupId || profile?.id, false)
             .catch(() => [] as MatchItem[]);
           if (calculated && calculated.length > 0) {
             matches = calculated;
@@ -257,6 +384,12 @@ export function Opportunities({
           }
           return b.match - a.match;
         });
+        if (formatted.length > 0) {
+          forYouCache.set(cacheKey, {
+            items: formatted,
+            fetchedAt: Date.now(),
+          });
+        }
         setItems(formatted);
       } finally {
         if (!cancelled) setLoading(false);
@@ -267,7 +400,7 @@ export function Opportunities({
     return () => {
       cancelled = true;
     };
-  }, [startupId, profile?.id, profile?.mainArea, profile?.technologies, profile?.currentStage]);
+  }, [cacheKey, startupId, profile?.id, tracaoActive]);
 
   const availableTypeTabs: OpportunityType[] = tracaoActive
     ? ["Todos", "Editais", "Eventos", "Compras"]
@@ -689,18 +822,7 @@ export function OpportunityDetail({
       : formattedType;
 
   const rawUrl = (item.externalUrl || item.url || "").trim();
-  const specificUrl =
-    rawUrl &&
-    rawUrl !== "https://inovastartups.com.br/" &&
-    rawUrl !== "https://inovastartups.com.br" &&
-    rawUrl !== "https://fapesp.br/pipe/chamadas" &&
-    rawUrl !== "http://www.finep.gov.br/chamadas-publicas/chamadaspublicas?situacao=aberta"
-      ? rawUrl
-      : item.title.toLowerCase().includes("fapesp")
-      ? "https://fapesp.br/pipe/jornada-tecnologica-2026-fase-1"
-      : item.title.toLowerCase().includes("finep")
-      ? "https://legacy.finep.gov.br/a-finep-externo/edital-efpc"
-      : "https://inovastartups.com.br/edital-inova-6a-edicao.pdf";
+  const specificUrl = resolveDeepEditalUrl(rawUrl, item.title);
 
   return (
     <div className="mx-auto w-full max-w-[1000px] min-w-0 overflow-hidden">
@@ -1022,18 +1144,7 @@ export function SavedOpportunities({
             const badgeColor = getBadgeColorByType(item.type, item.color);
             const raw = (item.externalUrl || item.url || "").trim();
             const corporate = isCorporateOpportunity(item.type);
-            const url =
-              raw &&
-              raw !== "https://inovastartups.com.br/" &&
-              raw !== "https://inovastartups.com.br" &&
-              raw !== "https://fapesp.br/pipe/chamadas" &&
-              raw !== "http://www.finep.gov.br/chamadas-publicas/chamadaspublicas?situacao=aberta"
-                ? raw
-                : item.title.toLowerCase().includes("fapesp")
-                ? "https://fapesp.br/pipe/jornada-tecnologica-2026-fase-1"
-                : item.title.toLowerCase().includes("finep")
-                ? "https://legacy.finep.gov.br/a-finep-externo/edital-efpc"
-                : "https://inovastartups.com.br/edital-inova-6a-edicao.pdf";
+            const url = resolveDeepEditalUrl(raw, item.title);
             return (
               <article
                 key={`${item.id}-${item.title}`}

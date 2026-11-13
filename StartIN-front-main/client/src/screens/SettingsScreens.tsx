@@ -28,6 +28,7 @@ import {
 } from "@/lib/api";
 import { ProMemberBadge, ProUpgradeModal, VerifiedProBadge } from "@/components/startin/PlanComponents";
 import type { Screen } from "@/types/startin";
+import { invalidateAllDailyCaches } from "@/utils/dailyCache";
 import {
   formatCityStateOnly,
   formatCNPJ,
@@ -37,6 +38,8 @@ import {
   isValidEmail,
   isValidPhoneBR,
 } from "@/utils/formatters";
+import { invalidateMatchesScreenCache } from "./MatchesScreen";
+import { invalidateForYouCache } from "./OpportunitiesScreen";
 import {
   calculateTrlFromAnswers,
   MAIN_TECH_AREAS,
@@ -615,7 +618,10 @@ export function SubSettings({
       });
 
       onProfileUpdated(updatedProfile);
-      api.recalculateMatches(updatedProfile.id || targetId, true).catch(() => {});
+      invalidateForYouCache();
+      invalidateMatchesScreenCache();
+      invalidateAllDailyCaches();
+      api.recalculateMatches(updatedProfile.id || targetId, false).catch(() => {});
       onNotificationTrigger?.();
       setAccountSavedMsg(`Estágio alterado para ${newStage} e salvo com sucesso no sistema!`);
       setTimeout(() => setAccountSavedMsg(""), 4500);
@@ -878,6 +884,9 @@ export function SubSettings({
       });
 
       onProfileUpdated(updatedProfile);
+      invalidateForYouCache();
+      invalidateMatchesScreenCache();
+      invalidateAllDailyCaches();
       await api.recalculateMatches(updatedProfile.id || targetId, false).catch(() => {});
       onNotificationTrigger?.();
       setAccountSavedMsg("Dados da conta e da startup salvos com sucesso no banco de dados!");
@@ -917,6 +926,9 @@ export function SubSettings({
         investmentNeed,
       });
       onProfileUpdated(updated);
+      invalidateForYouCache();
+      invalidateMatchesScreenCache();
+      invalidateAllDailyCaches();
       await api.recalculateMatches(updated.id || targetId, false).catch(() => {});
       onNotificationTrigger?.();
       setPrefsSavedMsg("Preferências de matching salvas e integradas ao banco!");

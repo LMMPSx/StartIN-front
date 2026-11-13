@@ -57,6 +57,7 @@ import {
   isValidCNPJ,
   isValidPhoneBR,
 } from "@/utils/formatters";
+import { DailyCycleCache } from "@/utils/dailyCache";
 import { COMPANY_SECTOR_AREAS, SUGGESTED_COMPANY_TOPICS } from "./OnboardingScreen";
 
 type SortOption = "match-desc" | "match-asc" | "name-asc" | "name-desc";
@@ -687,6 +688,8 @@ export function CreateForm({
 // ==========================================
 // 3. Buscar Startups (Para Empresas)
 // ==========================================
+const companyStartupsCache = new DailyCycleCache<StartupMatchItem[]>();
+
 export function SearchStartupsScreen({
   go,
   companyId,
@@ -696,8 +699,14 @@ export function SearchStartupsScreen({
   companyId?: number;
   onSelectStartup: (item: StartupMatchItem) => void;
 }) {
-  const [startups, setStartups] = useState<StartupMatchItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const session = getSession();
+  const proCompany = isProUser(session);
+  const activeCompanyId = companyId || session?.companyId;
+  const cacheKey = String(activeCompanyId ?? "default");
+  const cachedStartups = companyStartupsCache.get(cacheKey);
+
+  const [startups, setStartups] = useState<StartupMatchItem[]>(() => cachedStartups ?? []);
+  const [loading, setLoading] = useState(!cachedStartups);
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -708,20 +717,25 @@ export function SearchStartupsScreen({
   const [onlyInterested, setOnlyInterested] = useState<boolean>(false);
   const [, setPlanVersion] = useState(0);
 
-  const session = getSession();
-  const proCompany = isProUser(session);
-  const activeCompanyId = companyId || session?.companyId;
-
   useEffect(() => {
+    const existing = companyStartupsCache.get(cacheKey);
+    if (existing && existing.length > 0) {
+      setStartups(existing);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     api
       .getCompanyStartupsMatches(activeCompanyId)
       .then((res) => {
         setStartups(res);
+        if (Array.isArray(res) && res.length > 0) {
+          companyStartupsCache.set(cacheKey, res);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [activeCompanyId]);
+  }, [activeCompanyId, cacheKey]);
 
   const interestedCount = useMemo(
     () => startups.filter((s) => s.interestedInCompanyPoc).length,
@@ -1391,6 +1405,8 @@ export function StartupMatchDetailScreen({
 // ==========================================
 // 5. Buscar Empresas (Para Startups)
 // ==========================================
+const startupCompaniesCache = new DailyCycleCache<CompanyMatchItem[]>();
+
 export function SearchCompaniesScreen({
   go,
   startupId,
@@ -1400,8 +1416,14 @@ export function SearchCompaniesScreen({
   startupId?: number;
   onSelectCompany: (item: CompanyMatchItem) => void;
 }) {
-  const [companies, setCompanies] = useState<CompanyMatchItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const session = getSession();
+  const proStartup = isProUser(session);
+  const activeStartupId = startupId || session?.startupProfileId;
+  const cacheKey = String(activeStartupId ?? "default");
+  const cachedCompanies = startupCompaniesCache.get(cacheKey);
+
+  const [companies, setCompanies] = useState<CompanyMatchItem[]>(() => cachedCompanies ?? []);
+  const [loading, setLoading] = useState(!cachedCompanies);
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -1411,20 +1433,25 @@ export function SearchCompaniesScreen({
   const [minMatch, setMinMatch] = useState<number>(0);
   const [, setPlanVersion] = useState(0);
 
-  const session = getSession();
-  const proStartup = isProUser(session);
-  const activeStartupId = startupId || session?.startupProfileId;
-
   useEffect(() => {
+    const existing = startupCompaniesCache.get(cacheKey);
+    if (existing && existing.length > 0) {
+      setCompanies(existing);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     api
       .getStartupCompaniesMatches(activeStartupId)
       .then((res) => {
         setCompanies(res);
+        if (Array.isArray(res) && res.length > 0) {
+          startupCompaniesCache.set(cacheKey, res);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [activeStartupId]);
+  }, [activeStartupId, cacheKey]);
 
   const availableSectors = useMemo(() => {
     const set = new Set<string>();

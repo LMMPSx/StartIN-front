@@ -3,7 +3,21 @@
  */
 import { stripMarkdownToPlainText } from "@/utils/formatters";
 
-const API_BASE_URL = "http://localhost:8080/api";
+/**
+ * URL base do Backend Spring Boot.
+ * - Produção (Vercel): defina VITE_API_URL=https://seu-backend.up.railway.app (com ou sem /api).
+ * - Desenvolvimento local: usa http://localhost:8080/api automaticamente.
+ */
+function resolveApiBaseUrl(): string {
+  const raw = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  if (raw) {
+    const clean = raw.replace(/\/+$/, "");
+    return /\/api$/i.test(clean) ? clean : `${clean}/api`;
+  }
+  return import.meta.env.DEV ? "http://localhost:8080/api" : "/api";
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 export interface UserSession {
   token?: string;

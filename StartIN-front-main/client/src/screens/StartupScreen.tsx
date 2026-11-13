@@ -3,7 +3,10 @@ import { Camera, Check, Plus, X } from "@/icons";
 import { BackButton, PageTitle, PrimaryButton } from "@/components/startin/CommonUI";
 import { api, getSession, saveSession, type StartupProfileData } from "@/lib/api";
 import type { Screen } from "@/types/startin";
+import { invalidateAllDailyCaches } from "@/utils/dailyCache";
 import { formatCityStateOnly, getInitials } from "@/utils/formatters";
+import { invalidateMatchesScreenCache } from "./MatchesScreen";
+import { invalidateForYouCache } from "./OpportunitiesScreen";
 
 const DEFAULT_INTEREST_AREAS = [
   "IA",
@@ -144,6 +147,9 @@ export function Startup({
         avatarUrl: avatarUrl || undefined,
       });
       onProfileUpdated(updated);
+      invalidateForYouCache();
+      invalidateMatchesScreenCache();
+      invalidateAllDailyCaches();
       await api.recalculateMatches(updated.id || targetId, false).catch(() => {});
       setFeedbackMsg(
         "Preferências de matching salvas! As oportunidades em 'Para você' foram filtradas pelo seu perfil."

@@ -67,6 +67,7 @@ import {
   VerifiedProBadge,
 } from "@/components/startin/PlanComponents";
 import type { Screen } from "@/types/startin";
+import { DailyCycleCache } from "@/utils/dailyCache";
 import {
   formatCityStateOnly,
   formatCNPJ,
@@ -1582,6 +1583,11 @@ export function ProviderDashboardScreen({
 // =========================================================================
 // 3. EXPLORAR STARTUPS / STARTUPS SALVAS - VISÃO DO PRESTADOR (100% REAL)
 // =========================================================================
+const providerRecsCache = new DailyCycleCache<{
+  startups: any[];
+  connections: ServiceConnectionItem[];
+}>();
+
 export function ExploreStartupsScreen({
   go,
   onSelectStartup,
@@ -1591,22 +1597,42 @@ export function ExploreStartupsScreen({
   onSelectStartup?: (startup: any) => void;
   onlySaved?: boolean;
 }) {
-  const [startups, setStartups] = useState<any[]>([]);
-  const [connections, setConnections] = useState<ServiceConnectionItem[]>([]);
+  const sessionInfo = getSession();
+  const cacheKey = `${sessionInfo?.providerId ?? sessionInfo?.userId ?? "provider"}|rec`;
+  const initialCached = !onlySaved ? providerRecsCache.get(cacheKey) : null;
+
+  const [startups, setStartups] = useState<any[]>(() =>
+    initialCached ? initialCached.startups : []
+  );
+  const [connections, setConnections] = useState<ServiceConnectionItem[]>(() =>
+    initialCached ? initialCached.connections : []
+  );
   const [contactModalConn, setContactModalConn] = useState<ServiceConnectionItem | null>(null);
   const [filterArea, setFilterArea] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialCached);
 
-  const loadStartups = async () => {
+  const loadStartups = async (force = false) => {
+    const existing = !onlySaved && !force ? providerRecsCache.get(cacheKey) : null;
+    if (existing && existing.startups.length > 0) {
+      setStartups(existing.startups);
+      setConnections(existing.connections);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [list, conns] = await Promise.all([
         api.getProviderMatchingStartups({ onlySaved }).catch(() => []),
         api.getConnections().catch(() => []),
       ]);
-      setStartups(Array.isArray(list) ? list : []);
-      setConnections(Array.isArray(conns) ? conns : []);
+      const safeList = Array.isArray(list) ? list : [];
+      const safeConns = Array.isArray(conns) ? conns : [];
+      setStartups(safeList);
+      setConnections(safeConns);
+      if (!onlySaved && safeList.length > 0) {
+        providerRecsCache.set(cacheKey, { startups: safeList, connections: safeConns });
+      }
     } catch (err) {
       console.error("Erro ao listar startups em Tração:", err);
       setStartups([]);
@@ -1616,7 +1642,7 @@ export function ExploreStartupsScreen({
   };
 
   useEffect(() => {
-    loadStartups();
+    loadStartups(false);
   }, [onlySaved]);
 
   const handleToggleSave = async (startupId: number) => {
@@ -2863,6 +2889,7 @@ export function RequestConnectionScreen({
           ? anyStartup?.matchScore || 90
           : provider?.matchScore || 90,
       });
+      providerRecsCache.clear();
       onSent?.(res);
       go("connection-sent");
     } catch (err: any) {

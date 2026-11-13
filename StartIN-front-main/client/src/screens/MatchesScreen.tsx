@@ -10,6 +10,12 @@ import {
   saveOpportunityLocally,
 } from "./OpportunitiesScreen";
 
+const matchesScreenCache = new Map<string, { items: MatchItem[]; cachedDate: string }>();
+
+export function invalidateMatchesScreenCache() {
+  matchesScreenCache.clear();
+}
+
 export function Matches({
   go,
   startupId,
@@ -21,19 +27,35 @@ export function Matches({
   onSelectMatch: (m: MatchItem) => void;
   onSavedChange?: () => void;
 }) {
-  const [matchesList, setMatchesList] = useState<MatchItem[]>([]);
+  const cacheKey = String(startupId ?? "default");
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const cached = matchesScreenCache.get(cacheKey);
+  const hasValidCache = Boolean(cached && cached.items.length > 0 && cached.cachedDate === todayKey);
+  const [matchesList, setMatchesList] = useState<MatchItem[]>(() =>
+    hasValidCache && cached ? cached.items : []
+  );
 
-  const loadMatches = () => {
+  const loadMatches = (force = false) => {
+    const current = matchesScreenCache.get(cacheKey);
+    if (!force && current && current.items.length > 0 && current.cachedDate === todayKey) {
+      setMatchesList(current.items);
+      return;
+    }
     api
       .getMatches(startupId)
       .then((res) => {
-        if (Array.isArray(res)) setMatchesList(res);
+        if (Array.isArray(res)) {
+          setMatchesList(res);
+          if (res.length > 0) {
+            matchesScreenCache.set(cacheKey, { items: res, cachedDate: todayKey });
+          }
+        }
       })
       .catch(() => {});
   };
 
   useEffect(() => {
-    loadMatches();
+    loadMatches(false);
   }, [startupId]);
 
   const handleToggleSaveFromList = async (m: MatchItem) => {

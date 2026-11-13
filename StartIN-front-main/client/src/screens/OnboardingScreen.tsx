@@ -20,7 +20,10 @@ import {
   type StartupProfileData,
 } from "@/lib/api";
 import type { AccountType, Screen } from "@/types/startin";
+import { invalidateAllDailyCaches } from "@/utils/dailyCache";
 import { formatCityStateOnly } from "@/utils/formatters";
+import { invalidateMatchesScreenCache } from "./MatchesScreen";
+import { invalidateForYouCache } from "./OpportunitiesScreen";
 
 export const MAIN_TECH_AREAS = [
   "Inteligência Artificial & Dados",
@@ -813,6 +816,9 @@ export function Onboarding({
         });
       }
       localStorage.setItem("startin-auth", "1");
+      invalidateForYouCache();
+      invalidateMatchesScreenCache();
+      invalidateAllDailyCaches();
       await api.recalculateMatches(updated.id || targetId, true).catch(() => {});
     } catch {
       localStorage.setItem("startin-auth", "1");

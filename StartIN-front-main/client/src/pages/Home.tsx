@@ -24,6 +24,8 @@ import {
   CreateForm,
   Dashboard,
   getLocalSavedOpportunities,
+  invalidateForYouCache,
+  invalidateMatchesScreenCache,
   LandingScreen,
   Login,
   MatchDetail,
@@ -57,6 +59,7 @@ import {
   StartupServiceDemandsScreen,
 } from "@/screens/ProviderScreens";
 import type { AccountType, Screen } from "@/types/startin";
+import { invalidateAllDailyCaches } from "@/utils/dailyCache";
 import { computeAuditedClientMatchScore } from "@/utils/formatters";
 
 export default function Home() {
@@ -471,6 +474,9 @@ export default function Home() {
       sessionStorage.removeItem("startin_selected_provider");
       sessionStorage.removeItem("startin_selected_match");
     } catch {}
+    invalidateForYouCache();
+    invalidateMatchesScreenCache();
+    invalidateAllDailyCaches();
     clearSession();
     setProfile(null);
     setCompanyProfile(null);
