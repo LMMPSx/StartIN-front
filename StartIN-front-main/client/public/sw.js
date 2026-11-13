@@ -1,14 +1,13 @@
-const CACHE_NAME = "startin-pwa-v1";
+const CACHE_NAME = "startin-pwa-v2";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
-  "/icons/favicon.svg",
-  "/icons/icon-192x192.svg",
-  "/icons/icon-512x512.svg",
-  "/icons/icon-maskable.svg",
+  "/icons/rocket-icon.png",
+  "/icons/apple-touch-icon.png",
   "/icons/icon-192x192.png",
-  "/icons/icon-512x512.png"
+  "/icons/icon-512x512.png",
+  "/icons/icon-maskable.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -37,18 +36,18 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Requisições de API (/api) vão sempre primeiro para a rede (Backend Spring Boot + MySQL)
+  // Requisicoes de API (/api) vao sempre direto para a rede (Backend Spring Boot + MySQL)
   if (url.pathname.startsWith("/api")) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Apenas GET é cacheado pelo Service Worker
+  // Apenas GET e cacheado pelo Service Worker
   if (request.method !== "GET") {
     return;
   }
 
-  // Estratégia Network-First com fallback para Cache nas navegações e assets
+  // Estrategia Network-First com fallback para Cache nas navegacoes e assets
   event.respondWith(
     fetch(request)
       .then((networkResponse) => {

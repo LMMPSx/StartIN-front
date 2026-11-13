@@ -9,12 +9,19 @@ import { stripMarkdownToPlainText } from "@/utils/formatters";
  * - Desenvolvimento local: usa http://localhost:8080/api automaticamente.
  */
 function resolveApiBaseUrl(): string {
-  const raw = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  const raw = (
+    (import.meta.env.VITE_API_URL as string | undefined) ||
+    (import.meta.env.VITE_API_BASE_URL as string | undefined)
+  )?.trim();
   if (raw) {
     const clean = raw.replace(/\/+$/, "");
     return /\/api$/i.test(clean) ? clean : `${clean}/api`;
   }
-  return import.meta.env.DEV ? "http://localhost:8080/api" : "/api";
+  if (import.meta.env.DEV) {
+    return "http://localhost:8080/api";
+  }
+  // Em produção (Vercel), fallback automático para o backend ativo no Railway
+  return "https://startin-api-production.up.railway.app/api";
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();
@@ -456,22 +463,60 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  const response = await fetch(url, { ...options, headers });
+  let response: Response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch (netErr: any) {
+    const isLocal = API_BASE_URL.includes("localhost");
+    throw new Error(
+      isLocal
+        ? "Não foi possível conectar ao backend local (localhost:8080). Verifique se o serviço Spring Boot está ativo."
+        : "Não foi possível conectar ao backend. Verifique se a variável VITE_API_URL está correta e se o backend no Railway está ativo."
+    );
+  }
+
   if (!response.ok) {
-    let errorMessage = response.statusText;
+    let errorMessage = response.statusText || `Erro HTTP ${response.status}`;
     try {
-      const errJson = await response.json();
-      errorMessage = errJson.message || errJson.detail || errJson.error || JSON.stringify(errJson);
+      const rawText = await response.text();
+      if (rawText && rawText.trim().length > 0) {
+        try {
+          const errJson = JSON.parse(rawText);
+          errorMessage =
+            errJson.message ||
+            errJson.detail ||
+            errJson.error ||
+            (typeof errJson === "string" ? errJson : JSON.stringify(errJson));
+        } catch {
+          // Resposta não é JSON (ex.: HTML de erro 404/502 do Railway ou Vercel)
+          if (response.status === 404) {
+            errorMessage = "Serviço ou rota não encontrada no servidor (HTTP 404).";
+          } else if (response.status === 502 || response.status === 503) {
+            errorMessage = "O servidor do backend está reiniciando ou temporariamente indisponível (HTTP 502/503).";
+          } else if (rawText.length < 150 && !rawText.includes("<!DOCTYPE")) {
+            errorMessage = rawText;
+          }
+        }
+      }
     } catch {
-      const errText = await response.text();
-      if (errText) errorMessage = errText;
+      // Falha ao ler corpo do erro, mantém statusText padrão
     }
     throw new Error(errorMessage);
   }
+
   if (response.status === 204) {
     return undefined as T;
   }
-  return response.json();
+
+  const rawSuccessText = await response.text();
+  if (!rawSuccessText || rawSuccessText.trim().length === 0) {
+    return {} as T;
+  }
+  try {
+    return JSON.parse(rawSuccessText) as T;
+  } catch {
+    return rawSuccessText as unknown as T;
+  }
 }
 
 export const api = {

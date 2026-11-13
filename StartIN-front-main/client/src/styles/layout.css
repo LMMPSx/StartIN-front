@@ -29,6 +29,14 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
 }
 
+@media (max-width: 1023px) {
+  .startin-auth-card {
+    border-radius: 22px;
+    padding: 1.75rem 1.25rem !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  }
+}
+
 /* AppShell & Sidebar */
 .startin-app-shell {
   min-height: 100vh;
@@ -87,4 +95,36 @@
   margin-left: auto;
   margin-right: auto;
   max-width: 1280px;
+}
+
+/* Otimização de Responsividade Mobile Padrão PWA */
+@media (max-width: 1023px) {
+  .startin-header {
+    height: 60px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .startin-main-container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-top: 1.25rem !important;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+.startin-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 35;
+  display: flex;
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  align-items: center;
+  justify-content: space-around;
+  border-top: 1px solid #e5e7eb;
+  background-color: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 -3px 16px rgba(0, 0, 0, 0.05);
 }

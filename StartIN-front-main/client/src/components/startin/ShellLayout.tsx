@@ -9,14 +9,19 @@ import {
   ChevronDown,
   FilePlus2,
   FileText,
+  Handshake,
   HomeIcon,
   Logo,
   LogOut,
   Menu,
   OrbitMark,
   Rocket,
+  Search,
   SettingsIcon,
+  Shield,
   SlidersHorizontal,
+  Sparkles,
+  Target,
   UserRound,
   X,
 } from "@/icons";
@@ -393,6 +398,175 @@ export function AppShell({
     SCREEN_BREADCRUMB_LABELS[screen] ||
     "Minha conta";
 
+  // Itens da barra de navegação inferior mobile (padrão PWA para celulares)
+  const mobileNavItems: Array<{
+    id: string;
+    label: string;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+    active: boolean;
+    badge?: number;
+    onClick: () => void;
+  }> = isAdmin
+    ? [
+        {
+          id: "admin-home",
+          label: "Painel",
+          icon: Shield,
+          active: screen === "admin",
+          onClick: () => go("admin"),
+        },
+        {
+          id: "admin-users",
+          label: "Usuários",
+          icon: UserRound,
+          active: screen === "admin",
+          onClick: () => go("admin"),
+        },
+        {
+          id: "admin-opps",
+          label: "Editais",
+          icon: FileText,
+          active: screen === "admin",
+          onClick: () => go("admin"),
+        },
+        {
+          id: "admin-matches",
+          label: "Matches",
+          icon: Target,
+          active: screen === "admin",
+          onClick: () => go("admin"),
+        },
+        {
+          id: "menu",
+          label: "Menu",
+          icon: Menu,
+          active: menu,
+          onClick: () => setMenu(true),
+        },
+      ]
+    : isProvider
+    ? [
+        {
+          id: "dashboard",
+          label: "Home",
+          icon: HomeIcon,
+          active: screen === "dashboard" || screen === "provider-dashboard",
+          onClick: () => go("dashboard"),
+        },
+        {
+          id: "for-you",
+          label: "Recomendações",
+          icon: Sparkles,
+          active: screen === "for-you" || screen === "explore-startups",
+          onClick: () => go("for-you"),
+        },
+        {
+          id: "connections",
+          label: "Conexões",
+          icon: Handshake,
+          active: screen === "connections",
+          onClick: () => go("connections"),
+        },
+        {
+          id: "assistant",
+          label: "IA",
+          icon: Bot,
+          active: screen === "assistant",
+          onClick: () => go("assistant"),
+        },
+        {
+          id: "menu",
+          label: "Menu",
+          icon: Menu,
+          active: menu,
+          onClick: () => setMenu(true),
+        },
+      ]
+    : isCompany
+    ? [
+        {
+          id: "dashboard",
+          label: "Home",
+          icon: HomeIcon,
+          active: screen === "dashboard",
+          onClick: () => go("dashboard"),
+        },
+        {
+          id: "search-startups",
+          label: "Buscar",
+          icon: Search,
+          active: screen === "search-startups",
+          onClick: () => go("search-startups"),
+        },
+        {
+          id: "my-opportunities",
+          label: "Demandas",
+          icon: FilePlus2,
+          active: screen === "my-opportunities" || screen === "create-opportunity",
+          onClick: () => go("my-opportunities"),
+        },
+        {
+          id: "assistant",
+          label: "IA",
+          icon: Bot,
+          active: screen === "assistant",
+          onClick: () => go("assistant"),
+        },
+        {
+          id: "menu",
+          label: "Menu",
+          icon: Menu,
+          active: menu,
+          onClick: () => setMenu(true),
+        },
+      ]
+    : [
+        {
+          id: "dashboard",
+          label: "Home",
+          icon: HomeIcon,
+          active: screen === "dashboard",
+          onClick: () => go("dashboard"),
+        },
+        {
+          id: "for-you",
+          label: "Para você",
+          icon: Sparkles,
+          active: screen === "for-you" || screen === "explore",
+          onClick: () => go("for-you"),
+        },
+        isTracao
+          ? {
+              id: "my-service-demands",
+              label: "Demandas",
+              icon: Briefcase,
+              active: screen === "my-service-demands" || screen === "create-service-demand",
+              onClick: () => go("my-service-demands"),
+            }
+          : {
+              id: "matches",
+              label: "Matches",
+              icon: Target,
+              active: screen === "matches",
+              badge: matchesCount,
+              onClick: () => go("matches"),
+            },
+        {
+          id: "assistant",
+          label: "IA",
+          icon: Bot,
+          active: screen === "assistant",
+          onClick: () => go("assistant"),
+        },
+        {
+          id: "menu",
+          label: "Menu",
+          icon: Menu,
+          active: menu,
+          onClick: () => setMenu(true),
+        },
+      ];
+
   return (
     <div className="startin-app-shell">
       <div
@@ -767,8 +941,37 @@ export function AppShell({
             </div>
           </div>
         </header>
-        <main className="startin-main-container px-5 py-8 md:px-9 md:py-10">{children}</main>
+        <main className="startin-main-container px-4 py-6 sm:px-6 md:px-9 md:py-10">{children}</main>
       </div>
+
+      {/* Barra de Navegação Inferior Mobile Fixa (Padrão PWA / App Moderno) */}
+      <nav aria-label="Navegação inferior mobile" className="startin-bottom-nav lg:hidden">
+        {mobileNavItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={item.onClick}
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition ${
+                item.active ? "text-[#111827] font-bold" : "text-gray-400 font-medium hover:text-gray-600"
+              }`}
+            >
+              <div className="relative">
+                <Icon size={20} className={item.active ? "text-[#111827]" : "text-gray-400"} />
+                {item.badge != null && item.badge > 0 && (
+                  <span className="absolute -top-1 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[#FEC908] px-1 text-[8.5px] font-black leading-none text-[#111827]">
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+              <span className={`mt-0.5 text-[10px] leading-tight truncate max-w-[62px] ${item.active ? "font-extrabold text-[#111827]" : "text-gray-500"}`}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
