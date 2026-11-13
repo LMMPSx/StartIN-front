@@ -1,0 +1,52 @@
+:root {
+  /* Paleta Oficial da Marca StartIn (Baseada no Ícone Oficial) */
+  --startin-navy: #111827;
+  --startin-navy-dark: #000000;
+  --startin-blue: #111827;
+  --startin-blue-hover: #000000;
+  --startin-yellow: #FEC908;
+  --startin-yellow-hover: #E5B300;
+  --startin-green: #15803d;
+  --startin-danger: #dc2626;
+
+  /* Superfícies e Fundos - o que é branco segue da cor branca */
+  --background: #f9fafb;
+  --background-auth: #ffffff;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+
+  /* Tokens Semânticos */
+  --primary: #111827;
+  --primary-foreground: #ffffff;
+  --secondary: #fffbeb;
+  --secondary-foreground: #854d0e;
+  --muted: #f3f4f6;
+  --muted-foreground: #64748b;
+  --accent: #FEC908;
+  --accent-foreground: #111827;
+
+  /* Bordas e Inputs */
+  --border: #e5e7eb;
+  --border-subtle: #f3f4f6;
+  --input: #e5e7eb;
+  --ring: #FEC908;
+  --radius: 0.65rem;
+
+  /* Cores dos Badges de Oportunidades */
+  --badge-edital-bg: #fef08a;
+  --badge-edital-text: #854d0e;
+  --badge-poc-bg: #dcfce7;
+  --badge-poc-text: #166534;
+  --badge-evento-bg: #f1f5f9;
+  --badge-evento-text: #334155;
+  --badge-compra-bg: #fef3c7;
+  --badge-compra-text: #92400e;
+
+  /* Sombras */
+  --shadow-primary-btn: 0 6px 14px rgba(17, 24, 39, 0.14);
+  --shadow-auth-card: 0 20px 60px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 10px 24px rgba(0, 0, 0, 0.08);
+}

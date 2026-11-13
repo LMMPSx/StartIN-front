@@ -1,0 +1,90 @@
+/* Layout de Autenticação (AuthShell) */
+.startin-auth-shell {
+  min-height: 100vh;
+  background-color: var(--startin-navy);
+}
+
+@media (min-width: 1024px) {
+  .startin-auth-shell {
+    display: grid;
+    grid-template-columns: 43% 57%;
+  }
+}
+
+.startin-auth-hero {
+  position: relative;
+  overflow: hidden;
+  background-color: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  padding: 2.5rem 3rem;
+  color: #111827;
+}
+
+.startin-auth-card {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 28px;
+  border: 1px solid #e4e8ec;
+  background-color: #ffffff;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+/* AppShell & Sidebar */
+.startin-app-shell {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.startin-sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 40;
+  display: flex;
+  width: 248px;
+  flex-direction: column;
+  overflow-y: auto;
+  border-right: 1px solid #1f2937;
+  background-color: #111827;
+  color: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 1023px) {
+  .startin-sidebar {
+    transform: translateX(-100%);
+  }
+
+  .startin-sidebar.is-open {
+    transform: translateX(0);
+  }
+}
+
+@media (min-width: 1024px) {
+  .startin-sidebar {
+    transform: none !important;
+    translate: none !important;
+  }
+}
+
+.startin-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e8edf0;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+.startin-main-container {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1280px;
+}
