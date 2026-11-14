@@ -23,6 +23,7 @@ import {
   Zap,
 } from "@/icons";
 import type { AccountType, Screen } from "@/types/startin";
+import { usePwaInstall } from "@/pwa/registerSW";
 
 export function LandingScreen({
   go,
@@ -32,6 +33,7 @@ export function LandingScreen({
   onSelectRole?: (role: AccountType) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"startup" | "company" | "provider">("startup");
+  const { canInstall, triggerInstall } = usePwaInstall();
 
   const handleStartSignup = (role: AccountType) => {
     onSelectRole?.(role);
@@ -72,11 +74,21 @@ export function LandingScreen({
             </nav>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
+            {canInstall && (
+              <button
+                type="button"
+                onClick={triggerInstall}
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-[#111827] transition hover:bg-slate-100"
+              >
+                <Rocket size={13} className="text-[#111827]" />
+                <span className="hidden sm:inline">Instalar App</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => go("login")}
-              className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+              className="rounded-xl px-3 md:px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
             >
               Fazer login
             </button>

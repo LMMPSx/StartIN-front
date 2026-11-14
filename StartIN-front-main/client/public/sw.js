@@ -1,20 +1,22 @@
-const CACHE_NAME = "startin-pwa-v2";
+const CACHE_NAME = "startin-pwa-v3";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
   "/icons/rocket-icon.png",
   "/icons/apple-touch-icon.png",
+  "/icons/pwa-rocket-192.png",
+  "/icons/pwa-rocket-512.png",
+  "/icons/pwa-rocket-maskable.png",
   "/icons/icon-192x192.png",
-  "/icons/icon-512x512.png",
-  "/icons/icon-maskable.png"
+  "/icons/icon-512x512.png"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then((cache) => Promise.allSettled(STATIC_ASSETS.map((url) => cache.add(url))))
       .then(() => self.skipWaiting())
   );
 });

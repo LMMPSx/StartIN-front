@@ -27,6 +27,7 @@ import {
 } from "@/icons";
 import { clearSession, isProUser, type NotificationItem } from "@/lib/api";
 import { VerifiedProBadge } from "@/components/startin/PlanComponents";
+import { usePwaInstall } from "@/pwa/registerSW";
 import {
   NAV_ITEMS_ADMIN,
   NAV_ITEMS_COMPANY,
@@ -101,6 +102,8 @@ export function AuthShell({
   sideTitle: React.ReactNode;
   sideText: string;
 }) {
+  const { canInstall, triggerInstall } = usePwaInstall();
+
   return (
     <div className="startin-auth-shell">
       <section className="startin-auth-hero hidden lg:flex lg:flex-col lg:justify-between h-full min-h-screen">
@@ -129,9 +132,31 @@ export function AuthShell({
       </section>
       <section className="flex min-h-screen items-center justify-center p-5 md:p-10">
         <div className="startin-auth-card p-7 md:p-10">
-          <div className="mb-8 lg:hidden">
+          <div className="mb-8 flex items-center justify-between lg:hidden">
             <Logo />
+            {canInstall && (
+              <button
+                type="button"
+                onClick={triggerInstall}
+                className="flex items-center gap-1.5 rounded-full bg-[#111827] px-3 py-1.5 text-[11px] font-bold text-white shadow-xs transition hover:bg-black"
+              >
+                <Rocket size={13} className="text-[#FEC908]" />
+                Instalar App
+              </button>
+            )}
           </div>
+          {canInstall && (
+            <div className="mb-4 hidden justify-end lg:flex">
+              <button
+                type="button"
+                onClick={triggerInstall}
+                className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] font-bold text-[#111827] transition hover:bg-gray-100"
+              >
+                <Rocket size={13} className="text-[#111827]" />
+                Instalar aplicativo StartIn
+              </button>
+            </div>
+          )}
           {children}
         </div>
       </section>
@@ -370,6 +395,8 @@ export function AppShell({
     }, 180);
   };
 
+  const { canInstall, triggerInstall } = usePwaInstall();
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -603,7 +630,18 @@ export function AppShell({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
+            {canInstall && (
+              <button
+                type="button"
+                onClick={triggerInstall}
+                title="Instalar aplicativo StartIn"
+                className="flex items-center gap-1.5 rounded-full bg-[#111827] px-3 py-1.5 text-[11px] font-bold text-white shadow-xs transition hover:bg-black"
+              >
+                <Rocket size={13} className="text-[#FEC908]" />
+                <span>Instalar App</span>
+              </button>
+            )}
             <div
               className="relative"
               onMouseEnter={handleNotifMouseEnter}
