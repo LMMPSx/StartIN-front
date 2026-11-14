@@ -14,7 +14,13 @@ function resolveApiBaseUrl(): string {
     (import.meta.env.VITE_API_BASE_URL as string | undefined)
   )?.trim();
   if (raw) {
-    const clean = raw.replace(/\/+$/, "");
+    let clean = raw.replace(/\/+$/, "");
+    if (!clean.startsWith("/") && !/^https?:\/\//i.test(clean)) {
+      clean =
+        clean.startsWith("localhost") || clean.startsWith("127.0.0.1")
+          ? `http://${clean}`
+          : `https://${clean}`;
+    }
     return /\/api$/i.test(clean) ? clean : `${clean}/api`;
   }
   if (import.meta.env.DEV) {
