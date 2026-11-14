@@ -349,6 +349,7 @@ export function AppShell({
   const [notifPreviewOpen, setNotifPreviewOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const notifHoverTimerRef = useRef<number | null>(null);
+  const isAdmin = accountType === "ADMIN";
   const isCompany = accountType === "COMPANY";
   const isProvider = accountType === "PROVIDER";
 
@@ -750,7 +751,7 @@ export function AppShell({
                         {isProUser() && <VerifiedProBadge size={15} />}
                       </p>
                       <p className="truncate text-[11px] text-[#7a8792]">
-                        Fluxo {isProvider ? "Prestador de Serviços" : isCompany ? "Empresa Contratante" : "Startup"}
+                        Fluxo {isAdmin ? "Painel Administrativo" : isProvider ? "Prestador de Serviços" : isCompany ? "Empresa Contratante" : "Startup"}
                       </p>
                     </div>
                   </div>
@@ -760,7 +761,7 @@ export function AppShell({
                       type="button"
                       onClick={() => {
                         setProfileMenuOpen(false);
-                        go("dashboard");
+                        go(isAdmin ? "admin" : "dashboard");
                       }}
                       className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-black"
                     >
